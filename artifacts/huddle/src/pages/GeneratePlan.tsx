@@ -1,12 +1,16 @@
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Check, RefreshCw, Sparkles, Info, ShieldAlert } from "lucide-react";
+import {
+  ArrowLeft, Check, RefreshCw, Sparkles, Info, ShieldAlert,
+  DollarSign, TrendingUp, TrendingDown, Minus,
+} from "lucide-react";
 import { Button, Card, Badge } from "@/components/ui";
 import { useFamilyStore, useMealPlanStore, useNutritionStore, useRecipeStore } from "@/stores/huddle-stores";
 import { getWeekStart } from "@/lib/utils";
 import { MEAL_SLOTS, MealSlotKey } from "@/lib/types";
 import { generateMealPlan, recipesForSlot, SLOT_ASSUMED, CORE_SLOTS, OPTIONAL_SLOTS, GeneratedSlot } from "@/lib/generate-plan";
 import { filterRecipesForFamily, familyRestrictions } from "@/lib/dietary";
+import { estimateRecipeCost, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
 
 const DAY_SHORT: Record<string, string> = {
   monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu",
@@ -20,10 +24,11 @@ export default function GeneratePlan() {
   const { goals }             = useNutritionStore();
   const { recipes }           = useRecipeStore();
 
+  const currency  = getCurrencyConfig(familyGroup?.country);
   const weekStart = getWeekStart();
   const plan      = getPlan(weekStart, familyGroup?.code || "");
 
-  // ── Slot selection state ─────────────────────────────────────────────────
+  // ── Slot selection ───────────────────────────────────────────────────────
   const [selectedSlots, setSelectedSlots] = useState<Set<MealSlotKey>>(
     () => new Set(plan.active_slots as MealSlotKey[]),
   );
@@ -36,11 +41,18 @@ export default function GeneratePlan() {
     });
   }
 
+  // ── Weekly budget ────────────────────────────────────────────────────────
+  const [weeklyBudget, setWeeklyBudget] = useState<number | "">("");
+
+  // Convert local-currency budget to USD for comparison
+  const budgetUSD = typeof weeklyBudget === "number" && weeklyBudget > 0
+    ? weeklyBudget / currency.multiplier
+    : null;
+
   // ── Dietary filtering ────────────────────────────────────────────────────
-  const members = familyGroup?.family_members ?? [];
+  const members      = familyGroup?.family_members ?? [];
   const restrictions = familyRestrictions(members);
 
-  // Filter pool: apply family dietary needs + respect excluded_from_auto
   const filteredRecipes = useMemo(() => {
     const safe = filterRecipesForFamily(recipes, members);
     return safe.filter(r => !r.excluded_from_auto);
@@ -48,14 +60,13 @@ export default function GeneratePlan() {
 
   const filteredOut = recipes.length - filteredRecipes.length;
 
-  // Recipe count per slot (so user knows what's available)
   const recipeCountPerSlot = useMemo(() =>
     Object.fromEntries(
       MEAL_SLOTS.map(({ key }) => [key, recipesForSlot(filteredRecipes, key).length]),
     ), [filteredRecipes]);
 
   // ── Generation state ─────────────────────────────────────────────────────
-  const [results, setResults]  = useState<GeneratedSlot[]>([]);
+  const [results, setResults]     = useState<GeneratedSlot[]>([]);
   const [isPreview, setIsPreview] = useState(false);
 
   const existingKeys = useMemo(
@@ -65,15 +76,12 @@ export default function GeneratePlan() {
 
   function handleGenerate() {
     const slots = [...selectedSlots];
-    const generated = generateMealPlan(slots, existingKeys, filteredRecipes, goals);
-    setResults(generated);
+    setResults(generateMealPlan(slots, existingKeys, filteredRecipes, goals));
     setIsPreview(true);
   }
 
   function handleApply() {
-    const slots = [...selectedSlots];
-    // Persist which slots are active so Plan.tsx renders them all
-    setActiveSlots(weekStart, familyGroup!.code, slots);
+    setActiveSlots(weekStart, familyGroup!.code, [...selectedSlots]);
     results.forEach(({ day, slot, recipe }) => {
       setSlot(weekStart, familyGroup!.code, day, slot, {
         recipe_id:   recipe.id,
@@ -89,20 +97,43 @@ export default function GeneratePlan() {
     setLocation("/");
   }
 
-  // Nutrition summary of the generated preview
+  // ── Preview summaries ─────────────────────────────────────────────────────
   const previewTotals = useMemo(() => {
-    const DAYS_COUNT = 7;
-    const totalCal = results.reduce((s, r) => s + (r.recipe.calories ?? 0), 0);
+    const DAYS = 7;
+    const totalCal  = results.reduce((s, r) => s + (r.recipe.calories ?? 0), 0);
     const totalProt = results.reduce((s, r) => s + (r.recipe.protein ?? 0), 0);
+
+    // Cost estimate: sum each unique recipe's total cost (accounting for servings)
+    let totalCostUSD = 0;
+    let costCovered  = 0;
+    const seen = new Set<string>();
+    for (const { recipe } of results) {
+      if (seen.has(recipe.id)) continue;
+      seen.add(recipe.id);
+      const cost = estimateRecipeCost(recipe, recipe.servings ?? 4);
+      if (cost) {
+        totalCostUSD += cost.totalUSD;
+        costCovered++;
+      }
+    }
+
     return {
-      avgCal:  Math.round(totalCal  / DAYS_COUNT),
-      avgProt: Math.round(totalProt / DAYS_COUNT),
+      avgCal:       Math.round(totalCal  / DAYS),
+      avgProt:      Math.round(totalProt / DAYS),
+      weeklyCostUSD: costCovered > 0 ? totalCostUSD : null,
+      costCoverage:  costCovered / Math.max(1, seen.size),
     };
   }, [results]);
 
-  // ── Selected slot nutrition context ─────────────────────────────────────
-  // Only CORE unselected slots (breakfast/lunch/dinner) are assumed.
-  // Snacks and dessert are optional — no calories assumed when not selected.
+  // Budget comparison
+  const budgetStatus = useMemo(() => {
+    if (!budgetUSD || !previewTotals.weeklyCostUSD) return null;
+    const diff = previewTotals.weeklyCostUSD - budgetUSD;
+    const pct  = Math.abs(diff) / budgetUSD;
+    return { overBudget: diff > 0, pct, diffUSD: Math.abs(diff) };
+  }, [budgetUSD, previewTotals.weeklyCostUSD]);
+
+  // ── Nutrition context ─────────────────────────────────────────────────────
   const unselectedAssumedCal = CORE_SLOTS
     .filter(key => !selectedSlots.has(key))
     .reduce((sum, key) => sum + SLOT_ASSUMED[key].calories, 0);
@@ -132,26 +163,52 @@ export default function GeneratePlan() {
               </div>
               <h2 className="text-xl font-bold mb-1">Smart Meal Planning</h2>
               <p className="text-muted-foreground text-sm max-w-[260px] mx-auto">
-                Pick which meals to fill. The planner will match your nutrition goals as closely as possible.
+                Pick which meals to fill and set a budget. The planner will match your nutrition goals as closely as possible.
               </p>
             </Card>
+
+            {/* ── Weekly grocery budget ──────────────────────────────────── */}
+            <div className="bg-white border border-border rounded-2xl p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign size={15} className="text-primary" />
+                <h3 className="text-sm font-bold">Weekly Grocery Budget <span className="text-muted-foreground font-normal">(optional)</span></h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter an estimated weekly budget for groceries. We'll show how this plan compares after generation.
+              </p>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                  {currency.symbol}
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="e.g. 150"
+                  value={weeklyBudget}
+                  onChange={e => setWeeklyBudget(e.target.value === "" ? "" : Number(e.target.value))}
+                  className="w-full pl-8 pr-4 py-2.5 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-secondary/30"
+                />
+              </div>
+              {typeof weeklyBudget === "number" && weeklyBudget > 0 && (
+                <p className="text-xs text-primary font-medium">
+                  Budget set: {currency.symbol}{weeklyBudget.toLocaleString()} {currency.code}/week
+                </p>
+              )}
+            </div>
 
             {/* Dietary filter banner */}
             {(restrictions.length > 0 || filteredOut > 0) && (
               <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-2xl p-4">
                 <ShieldAlert size={18} className="text-primary mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold text-primary mb-0.5">
-                    Dietary filters active
-                  </p>
+                  <p className="text-sm font-semibold text-primary mb-0.5">Dietary filters active</p>
                   <p className="text-xs text-muted-foreground">
                     {filteredOut > 0
                       ? `${filteredOut} recipe${filteredOut !== 1 ? "s" : ""} excluded based on your family's dietary needs.`
                       : "Family dietary needs will be respected when selecting recipes."}
                     {" "}
-                    {restrictions.length > 0 && (
-                      <span className="font-medium">{restrictions.join(", ")}</span>
-                    )}
+                    {restrictions.length > 0 && <span className="font-medium">{restrictions.join(", ")}</span>}
                   </p>
                 </div>
               </div>
@@ -159,7 +216,6 @@ export default function GeneratePlan() {
 
             {/* Slot selector */}
             <div className="space-y-4">
-              {/* Core meals */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Core meals</p>
                 <div className="grid grid-cols-3 gap-2">
@@ -189,7 +245,6 @@ export default function GeneratePlan() {
                 </div>
               </div>
 
-              {/* Optional extras */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Optional extras</p>
                 <p className="text-[11px] text-muted-foreground mb-2">Snacks and dessert are never assumed in your calorie budget — only add them if you want them planned.</p>
@@ -229,9 +284,7 @@ export default function GeneratePlan() {
                   {CORE_SLOTS.every(s => selectedSlots.has(s))
                     ? "All core meals selected — the plan will target your full daily goal of "
                     : "For any core meal (breakfast/lunch/dinner) not in the plan, a typical intake is assumed. Your selected slots will target "}
-                  <span className="font-bold text-foreground">
-                    ~{remainingBudget.toLocaleString()} kcal.
-                  </span>
+                  <span className="font-bold text-foreground">~{remainingBudget.toLocaleString()} kcal.</span>
                   {" "}Snacks and dessert are never assumed.
                 </p>
               </div>
@@ -242,19 +295,12 @@ export default function GeneratePlan() {
                 </div>
                 <div className="bg-white rounded-xl p-3 text-center">
                   <span className="text-xs text-muted-foreground block">Slots selected</span>
-                  <span className="font-bold text-foreground">
-                    {selectedSlots.size} / {MEAL_SLOTS.length}
-                  </span>
+                  <span className="font-bold text-foreground">{selectedSlots.size} / {MEAL_SLOTS.length}</span>
                 </div>
               </div>
             </div>
 
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleGenerate}
-              disabled={selectedSlots.size === 0}
-            >
+            <Button className="w-full" size="lg" onClick={handleGenerate} disabled={selectedSlots.size === 0}>
               <Sparkles size={16} className="mr-2" />
               Fill {selectedSlots.size > 0 ? `${selectedSlots.size * 7} slots` : "Plan"}
             </Button>
@@ -271,17 +317,81 @@ export default function GeneratePlan() {
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-white border border-border rounded-2xl p-3 text-center">
                 <span className="text-xs text-muted-foreground block">Avg planned cal/day</span>
-                <span className="font-bold text-foreground tabular-nums">
-                  {previewTotals.avgCal.toLocaleString()} kcal
-                </span>
+                <span className="font-bold text-foreground tabular-nums">{previewTotals.avgCal.toLocaleString()} kcal</span>
               </div>
               <div className="bg-white border border-border rounded-2xl p-3 text-center">
                 <span className="text-xs text-muted-foreground block">Avg planned protein/day</span>
-                <span className="font-bold text-foreground tabular-nums">
-                  {previewTotals.avgProt}g
-                </span>
+                <span className="font-bold text-foreground tabular-nums">{previewTotals.avgProt}g</span>
               </div>
             </div>
+
+            {/* ── Cost estimate ──────────────────────────────────────────── */}
+            {previewTotals.weeklyCostUSD !== null && (
+              <div className={`rounded-2xl border p-4 space-y-3 ${
+                budgetStatus
+                  ? budgetStatus.overBudget
+                    ? "bg-red-50 border-red-200"
+                    : "bg-green-50 border-green-200"
+                  : "bg-white border-border"
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <DollarSign size={16} className={budgetStatus ? (budgetStatus.overBudget ? "text-red-600" : "text-green-600") : "text-primary"} />
+                    <span className="text-sm font-bold">Estimated weekly groceries</span>
+                  </div>
+                  {budgetStatus && (
+                    <div className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
+                      budgetStatus.overBudget
+                        ? "bg-red-100 text-red-700"
+                        : "bg-green-100 text-green-700"
+                    }`}>
+                      {budgetStatus.overBudget
+                        ? <><TrendingUp size={11} /> Over budget</>
+                        : <><TrendingDown size={11} /> Under budget</>}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-2xl font-bold tabular-nums">
+                      {formatCost(previewTotals.weeklyCostUSD, currency)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      estimated · {Math.round(previewTotals.costCoverage * 100)}% ingredients priced
+                    </p>
+                  </div>
+                  {budgetUSD && (
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Your budget</p>
+                      <p className="font-bold text-sm">{currency.symbol}{(typeof weeklyBudget === "number" ? weeklyBudget : 0).toLocaleString()}</p>
+                      <p className={`text-xs font-semibold mt-0.5 ${budgetStatus?.overBudget ? "text-red-600" : "text-green-600"}`}>
+                        {budgetStatus?.overBudget ? "+" : "-"}{formatCost(budgetStatus?.diffUSD ?? 0, currency)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Budget bar */}
+                {budgetUSD && previewTotals.weeklyCostUSD && (
+                  <div className="space-y-1">
+                    <div className="h-2 bg-white/60 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${budgetStatus?.overBudget ? "bg-red-500" : "bg-green-500"}`}
+                        style={{ width: `${Math.min(100, (previewTotals.weeklyCostUSD / budgetUSD) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      {Math.round((previewTotals.weeklyCostUSD / budgetUSD) * 100)}% of budget
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-[10px] text-muted-foreground leading-relaxed border-t border-black/5 pt-2">
+                  Estimates are based on typical supermarket prices and may vary significantly by store, region, and seasonal availability. Actual cost depends on what you already have at home. This is a guide only.
+                </p>
+              </div>
+            )}
 
             {/* Results grouped by day */}
             {(["monday","tuesday","wednesday","thursday","friday","saturday","sunday"] as const).map(day => {

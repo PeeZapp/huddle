@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Check, Plus, Trash2, Wand2, ShoppingCart, Layers } from "lucide-react";
+import { Check, Plus, Trash2, Wand2, ShoppingCart, Layers, Info } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button, Input } from "@/components/ui";
-import { useShoppingStore, useMealPlanStore, useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
+import {
+  useShoppingStore, useMealPlanStore, useRecipeStore,
+  useFamilyStore,
+} from "@/stores/huddle-stores";
 import { getWeekStart } from "@/lib/utils";
 import { ShoppingItem } from "@/lib/types";
+import { estimateIngredientCostUSD, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
 
 // ─── Category config ─────────────────────────────────────────────────────────
 
@@ -15,31 +19,27 @@ interface CategoryDef {
 }
 
 const CATEGORY_DEFS: CategoryDef[] = [
-  { label: "Bakery",          emoji: "🍞", keywords: ["bakery","bread","baked","pastry","roll"] },
-  { label: "Dairy & Eggs",    emoji: "🥛", keywords: ["dairy","egg","milk","cream","cheese","butter","yoghurt","yogurt"] },
-  { label: "Deli & Chilled",  emoji: "🧆", keywords: ["deli","chilled","tofu","halloumi","chorizo","prosciutto","pancetta"] },
-  { label: "Drinks",          emoji: "🧃", keywords: ["drink","beverage","juice","water","wine","beer","soda","cola","tea","coffee"] },
-  { label: "Fish & Seafood",  emoji: "🐟", keywords: ["fish","seafood","salmon","cod","prawn","shrimp","tuna","anchovy","clam","lobster","mussel","squid","sea bass","seabass"] },
-  { label: "Frozen",          emoji: "🧊", keywords: ["frozen"] },
-  { label: "Fruit",           emoji: "🍎", keywords: ["fruit","apple","banana","lemon","lime","orange","mango","berry","berries","grape","pear","peach","avocado","tomato"] },
-  { label: "Grains & Pasta",  emoji: "🍝", keywords: ["grain","pasta","rice","noodle","spaghetti","penne","linguine","fettuccine","couscous","quinoa","oat","flour","breadcrumb","bulgur"] },
-  { label: "Herbs & Spices",  emoji: "🌿", keywords: ["herb","spice","basil","parsley","cilantro","coriander","thyme","rosemary","oregano","mint","cumin","paprika","turmeric","ginger","chilli","chili","pepper","salt","bay","saffron","cardamom","cinnamon","clove","nutmeg","allspice","star anise","sumac","za'atar","ras el hanout"] },
-  { label: "Meat & Poultry",  emoji: "🥩", keywords: ["meat","beef","pork","chicken","lamb","turkey","veal","mince","sausage","bacon","poultry","steak","rib","brisket","pulled"] },
+  { label: "Bakery",            emoji: "🍞", keywords: ["bakery","bread","baked","pastry","roll"] },
+  { label: "Dairy & Eggs",      emoji: "🥛", keywords: ["dairy","egg","milk","cream","cheese","butter","yoghurt","yogurt"] },
+  { label: "Deli & Chilled",    emoji: "🧆", keywords: ["deli","chilled","tofu","halloumi","chorizo","prosciutto","pancetta"] },
+  { label: "Drinks",            emoji: "🧃", keywords: ["drink","beverage","juice","water","wine","beer","soda","cola","tea","coffee"] },
+  { label: "Fish & Seafood",    emoji: "🐟", keywords: ["fish","seafood","salmon","cod","prawn","shrimp","tuna","anchovy","clam","lobster","mussel","squid","sea bass","seabass"] },
+  { label: "Frozen",            emoji: "🧊", keywords: ["frozen"] },
+  { label: "Fruit",             emoji: "🍎", keywords: ["fruit","apple","banana","lemon","lime","orange","mango","berry","berries","grape","pear","peach","avocado","tomato"] },
+  { label: "Grains & Pasta",    emoji: "🍝", keywords: ["grain","pasta","rice","noodle","spaghetti","penne","linguine","fettuccine","couscous","quinoa","oat","flour","breadcrumb","bulgur"] },
+  { label: "Herbs & Spices",    emoji: "🌿", keywords: ["herb","spice","basil","parsley","cilantro","coriander","thyme","rosemary","oregano","mint","cumin","paprika","turmeric","ginger","chilli","chili","pepper","salt","bay","saffron","cardamom","cinnamon","clove","nutmeg","allspice","star anise","sumac","za'atar","ras el hanout"] },
+  { label: "Meat & Poultry",    emoji: "🥩", keywords: ["meat","beef","pork","chicken","lamb","turkey","veal","mince","sausage","bacon","poultry","steak","rib","brisket","pulled"] },
   { label: "Oils & Condiments", emoji: "🫙", keywords: ["oil","vinegar","sauce","condiment","ketchup","mustard","mayo","mayonnaise","soy","fish sauce","oyster sauce","worcestershire","tahini","miso","paste","stock","broth","harissa","sriracha","tabasco"] },
-  { label: "Tins & Jars",     emoji: "🥫", keywords: ["tin","can","jar","canned","tinned","bean","lentil","chickpea","tomato paste","coconut milk","baked bean","kidney bean","black bean"] },
-  { label: "Vegetables",      emoji: "🥦", keywords: ["vegetable","veg","onion","garlic","carrot","celery","broccoli","spinach","mushroom","courgette","zucchini","aubergine","eggplant","potato","sweet potato","capsicum","pepper","leek","cabbage","cauliflower","kale","asparagus","pea","corn","sweetcorn","artichoke","fennel","beetroot","beet","radish","cucumber","lettuce","rocket","arugula","spring onion","scallion","shallot","bok choy","pak choi"] },
-  { label: "Other",           emoji: "🛒", keywords: [] },
+  { label: "Tins & Jars",       emoji: "🥫", keywords: ["tin","can","jar","canned","tinned","bean","lentil","chickpea","tomato paste","coconut milk","baked bean","kidney bean","black bean"] },
+  { label: "Vegetables",        emoji: "🥦", keywords: ["vegetable","veg","onion","garlic","carrot","celery","broccoli","spinach","mushroom","courgette","zucchini","aubergine","eggplant","potato","sweet potato","capsicum","pepper","leek","cabbage","cauliflower","kale","asparagus","pea","corn","sweetcorn","artichoke","fennel","beetroot","beet","radish","cucumber","lettuce","rocket","arugula","spring onion","scallion","shallot","bok choy","pak choi"] },
+  { label: "Other",             emoji: "🛒", keywords: [] },
 ];
 
 function resolveCategory(raw: string | undefined): string {
   if (!raw) return "Other";
   const lower = raw.toLowerCase().trim();
-
-  // Direct match on the label
   const direct = CATEGORY_DEFS.find(c => c.label.toLowerCase() === lower);
   if (direct) return direct.label;
-
-  // Keyword match
   for (const def of CATEGORY_DEFS) {
     if (def.keywords.some(kw => lower.includes(kw))) return def.label;
   }
@@ -50,7 +50,7 @@ function categoryEmoji(label: string): string {
   return CATEGORY_DEFS.find(c => c.label === label)?.emoji ?? "🛒";
 }
 
-// ─── Grouping helpers ─────────────────────────────────────────────────────────
+// ─── Grouping ─────────────────────────────────────────────────────────────────
 
 function groupByCategory(items: ShoppingItem[]): Map<string, ShoppingItem[]> {
   const map = new Map<string, ShoppingItem[]>();
@@ -62,7 +62,6 @@ function groupByCategory(items: ShoppingItem[]): Map<string, ShoppingItem[]> {
     if (!map.has(cat)) map.set(cat, []);
     map.get(cat)!.push(item);
   }
-  // Sort categories alphabetically (Other always last)
   return new Map(
     [...map.entries()].sort(([a], [b]) => {
       if (a === "Other") return 1;
@@ -72,18 +71,45 @@ function groupByCategory(items: ShoppingItem[]): Map<string, ShoppingItem[]> {
   );
 }
 
+// ─── Cost estimation ──────────────────────────────────────────────────────────
+
+interface CostSummary {
+  totalUSD: number;
+  coveredItems: number;
+  totalItems: number;
+}
+
+function estimateListCost(items: ShoppingItem[]): CostSummary {
+  let totalUSD = 0;
+  let covered  = 0;
+  for (const item of items) {
+    const cost = estimateIngredientCostUSD(item.name, item.amount);
+    if (cost !== null) {
+      totalUSD += cost;
+      covered++;
+    }
+  }
+  return { totalUSD, coveredItems: covered, totalItems: items.length };
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Shopping() {
-  const [, setLocation]                                          = useLocation();
-  const { familyGroup }                                           = useFamilyStore();
-  const { items, addItem, toggleItem, deleteItem, clearChecked, generateFromPlan } = useShoppingStore();
-  const { getPlan }                                              = useMealPlanStore();
-  const { recipes }                                              = useRecipeStore();
+  const [, setLocation]    = useLocation();
+  const { familyGroup }    = useFamilyStore();
+  const currency           = getCurrencyConfig(familyGroup?.country);
 
-  const [newItem, setNewItem]     = useState("");
-  const [newCategory, setNewCategory] = useState("Other");
+  const {
+    items, addItem, toggleItem, deleteItem, clearChecked, generateFromPlan,
+  } = useShoppingStore();
+  const { getPlan }  = useMealPlanStore();
+  const { recipes }  = useRecipeStore();
+
+  const [newItem, setNewItem]           = useState("");
+  const [newCategory, setNewCategory]   = useState("Other");
   const [showCatPicker, setShowCatPicker] = useState(false);
+  const [showCostInfo, setShowCostInfo] = useState(false);
+
   const weekStart = getWeekStart();
 
   const handleAdd = (e: React.FormEvent) => {
@@ -102,11 +128,18 @@ export default function Shopping() {
   const checkedItems = items.filter(i => i.family_code === familyGroup?.code && i.checked);
 
   const grouped = groupByCategory(activeItems);
-  const isEmpty = activeItems.length === 0 && checkedItems.length === 0;
+  const isEmpty  = activeItems.length === 0 && checkedItems.length === 0;
+
+  // Cost estimate for active (unchecked) items
+  const costSummary = activeItems.length > 0 ? estimateListCost(activeItems) : null;
+  const coveragePct = costSummary
+    ? Math.round((costSummary.coveredItems / Math.max(1, costSummary.totalItems)) * 100)
+    : 0;
 
   return (
     <div className="flex flex-col min-h-full pb-24">
-      {/* Header */}
+
+      {/* ── Header ───────────────────────────────────────────────────────── */}
       <header className="px-6 pt-12 pb-6 bg-white sticky top-0 z-20 border-b border-border/50">
         <div className="flex justify-between items-end">
           <div>
@@ -121,7 +154,59 @@ export default function Shopping() {
 
       <div className="p-6 space-y-6">
 
-        {/* Add item form */}
+        {/* ── Cost estimate banner ──────────────────────────────────────── */}
+        {costSummary && costSummary.totalUSD > 0 && (
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl overflow-hidden">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart size={15} className="text-primary" />
+                  <span className="text-sm font-bold text-primary">Estimated list total</span>
+                </div>
+                <button
+                  onClick={() => setShowCostInfo(v => !v)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Info size={15} />
+                </button>
+              </div>
+
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-3xl font-bold tabular-nums">
+                    {formatCost(costSummary.totalUSD, currency)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {costSummary.coveredItems} of {costSummary.totalItems} items priced ({coveragePct}%)
+                  </p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <p>{activeItems.length} item{activeItems.length !== 1 ? "s" : ""}</p>
+                  <p>remaining</p>
+                </div>
+              </div>
+
+              {/* Coverage bar */}
+              <div className="mt-3 h-1.5 bg-primary/15 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{ width: `${coveragePct}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Disclaimer — expandable */}
+            {showCostInfo && (
+              <div className="px-4 pb-4 pt-0 border-t border-primary/10 mt-0">
+                <p className="text-[11px] text-muted-foreground leading-relaxed pt-3">
+                  <strong>About these estimates:</strong> Prices are based on typical supermarket prices and are shown in {currency.code} using an estimated exchange rate. Actual prices vary by store, brand, region, and season. Items without a recognised name are excluded from the total. Quantities shown are for the recipes as written — you may already have some ingredients at home. This is a rough guide only and should not be relied upon for budgeting purposes.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Add item form ─────────────────────────────────────────────── */}
         <div className="space-y-2">
           <form onSubmit={handleAdd} className="flex gap-2">
             <Input
@@ -163,7 +248,7 @@ export default function Shopping() {
           </div>
         </div>
 
-        {/* Empty state */}
+        {/* ── Empty state ───────────────────────────────────────────────── */}
         {isEmpty && (
           <div className="text-center py-16 text-muted-foreground">
             <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-20" />
@@ -172,67 +257,70 @@ export default function Shopping() {
           </div>
         )}
 
-        {/* Active items grouped by category */}
+        {/* ── Active items grouped by category ─────────────────────────── */}
         {[...grouped.entries()].map(([category, catItems]) => (
           <div key={category}>
-            {/* Category header */}
             <div className="flex items-center gap-2 mb-2 mt-1">
               <span className="text-base leading-none">{categoryEmoji(category)}</span>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                {category}
-              </h2>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{category}</h2>
               <span className="text-xs text-muted-foreground/60">({catItems.length})</span>
             </div>
 
-            {/* Items */}
             <div className="space-y-2">
-              {catItems.map(item => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-border shadow-sm"
-                >
-                  <button
-                    onClick={() => toggleItem(item.id)}
-                    className="w-6 h-6 rounded-full border-2 border-primary/40 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-medium text-sm">{item.name}</span>
-                      {item.amount && (
-                        <span className="text-xs font-normal text-muted-foreground">{item.amount}</span>
+              {catItems.map(item => {
+                const itemCostUSD = estimateIngredientCostUSD(item.name, item.amount);
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-border shadow-sm"
+                  >
+                    <button
+                      onClick={() => toggleItem(item.id)}
+                      className="w-6 h-6 rounded-full border-2 border-primary/40 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-medium text-sm">{item.name}</span>
+                        {item.amount && (
+                          <span className="text-xs font-normal text-muted-foreground">{item.amount}</span>
+                        )}
+                      </div>
+                      {item.is_base_recipe && item.base_recipe_id && (
+                        <button
+                          onClick={() => setLocation(`/recipe/${item.base_recipe_id}`)}
+                          className="flex items-center gap-1 text-[10px] font-bold text-primary mt-0.5 hover:underline"
+                        >
+                          <Layers size={9} />
+                          from {item.base_recipe_name ?? "base recipe"}
+                        </button>
                       )}
                     </div>
-                    {item.is_base_recipe && item.base_recipe_id && (
-                      <button
-                        onClick={() => setLocation(`/recipe/${item.base_recipe_id}`)}
-                        className="flex items-center gap-1 text-[10px] font-bold text-primary mt-0.5 hover:underline"
-                      >
-                        <Layers size={9} />
-                        from {item.base_recipe_name ?? "base recipe"}
-                      </button>
+                    {/* Per-item cost estimate */}
+                    {itemCostUSD !== null && (
+                      <span className="text-[11px] font-semibold text-muted-foreground shrink-0">
+                        ~{formatCost(itemCostUSD, currency)}
+                      </span>
                     )}
+                    <button
+                      onClick={() => deleteItem(item.id)}
+                      className="text-muted-foreground/50 hover:text-destructive transition-colors p-1 shrink-0"
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => deleteItem(item.id)}
-                    className="text-muted-foreground/50 hover:text-destructive transition-colors p-1 shrink-0"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}
 
-        {/* Checked / ticked off items */}
+        {/* ── Ticked off items ──────────────────────────────────────────── */}
         {checkedItems.length > 0 && (
           <div className="pt-4 border-t border-border/50">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-2">
                 <span className="text-base">✅</span>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Ticked off
-                </h2>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ticked off</h2>
                 <span className="text-xs text-muted-foreground/60">({checkedItems.length})</span>
               </div>
               <button
@@ -259,11 +347,7 @@ export default function Shopping() {
                     </button>
                     <span className="flex-1 line-through text-sm">
                       {item.name}
-                      {item.amount && (
-                        <span className="ml-1.5 text-xs font-normal">
-                          {item.amount}
-                        </span>
-                      )}
+                      {item.amount && <span className="ml-1.5 text-xs font-normal">{item.amount}</span>}
                     </span>
                     <button
                       onClick={() => deleteItem(item.id)}

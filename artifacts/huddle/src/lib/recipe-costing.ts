@@ -352,7 +352,7 @@ function findPrice(ingredientName: string): PriceEntry | null {
 
 // ─── Single ingredient cost ───────────────────────────────────────────────────
 
-function estimateIngredientCostUSD(name: string, amount: string | undefined): number | null {
+export function estimateIngredientCostUSD(name: string, amount: string | undefined): number | null {
   const entry = findPrice(name);
   if (!entry) return null;
 
