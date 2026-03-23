@@ -28,7 +28,7 @@ router.post("/ai", async (req, res) => {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-3-5-haiku-20241022",
+        model: "claude-haiku-4-5",
         max_tokens: 4096,
         system: systemPrompt,
         messages: [{ role: "user", content: prompt }],
@@ -41,14 +41,19 @@ router.post("/ai", async (req, res) => {
     }
 
     const data = await response.json() as { content: Array<{ text: string }> };
-    const text = data.content?.[0]?.text ?? "";
+    let text = data.content?.[0]?.text ?? "";
 
     if (responseFormat === "json") {
+      // Strip markdown code fences Claude sometimes wraps around JSON
+      const clean = text
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```\s*$/, "")
+        .trim();
       try {
-        const parsed = JSON.parse(text);
+        const parsed = JSON.parse(clean);
         return res.json({ result: parsed });
       } catch {
-        return res.json({ result: text });
+        return res.json({ result: clean });
       }
     }
 

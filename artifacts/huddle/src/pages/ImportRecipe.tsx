@@ -1,40 +1,193 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Link as LinkIcon, FileText, Download } from "lucide-react";
-import { Button, Input, Card } from "@/components/ui";
-import { useAiMutation } from "@/hooks/use-ai";
+import { ArrowLeft, Link as LinkIcon, FileText, Download, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
+import { Button, Input } from "@/components/ui";
 import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
+
+// ── AI extraction via our proxy ───────────────────────────────────────────────
+
+const RECIPE_JSON_SCHEMA = `Return ONLY a valid JSON object with these fields:
+- name (string)
+- emoji (1 relevant food emoji)
+- photo_color (hex color matching the dish, e.g. "#E8A87C")
+- cuisine (string, e.g. "Italian", "Asian")
+- cook_time (number, total minutes)
+- servings (number)
+- calories (number per serving)
+- protein (number grams per serving)
+- carbs (number grams per serving)
+- fat (number grams per serving)
+- vegetarian (boolean)
+- ingredients (array of { name: string, amount: string, category: string })
+  categories: "meat","seafood","dairy","vegetables","fruit","grains","condiments","herbs","other"
+- method (array of clear step strings)
+- chef_tip (string, a useful tip)
+- meal_slots (array of: "breakfast","lunch","dinner")
+
+Return ONLY the JSON. No markdown, no explanation.`;
+
+async function extractRecipeWithAi(content: string): Promise<Record<string, unknown>> {
+  const prompt = `You are a recipe extraction expert. Extract the recipe from the following text and return a JSON object.
+
+${RECIPE_JSON_SCHEMA}
+
+Content:
+${content}`;
+
+  const res = await fetch("/api/ai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, responseFormat: "json" }),
+  });
+  if (!res.ok) throw new Error("AI extraction failed");
+  const data = await res.json() as { result: unknown };
+  const result = data.result;
+  if (typeof result === "string") return JSON.parse(result);
+  return result as Record<string, unknown>;
+}
+
+async function extractRecipeFromUrlWithAi(url: string): Promise<Record<string, unknown>> {
+  const prompt = `A user wants to import a recipe from this URL: ${url}
+
+You cannot browse the web, but you may recognise this recipe from your training data. Please provide the full recipe as a JSON object.
+If you recognise the recipe (even partially), include every detail you know.
+If you do not recognise this specific URL, try to infer the recipe from the URL path (e.g. "easy-meatloaf" tells you what the dish is) and provide a solid version of that recipe.
+
+${RECIPE_JSON_SCHEMA}`;
+
+  const res = await fetch("/api/ai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, responseFormat: "json" }),
+  });
+  if (!res.ok) throw new Error("AI extraction failed");
+  const data = await res.json() as { result: unknown };
+  const result = data.result;
+  if (typeof result === "string") return JSON.parse(result);
+  return result as Record<string, unknown>;
+}
+
+// ── Status indicator ──────────────────────────────────────────────────────────
+
+type Phase = "idle" | "fetching" | "extracting" | "done" | "error";
+
+function StatusBar({ phase, error }: { phase: Phase; error?: string }) {
+  if (phase === "idle") return null;
+
+  const config = {
+    fetching:   { icon: <Loader2 size={16} className="animate-spin" />, msg: "Fetching recipe page…",         cls: "bg-blue-50 border-blue-200 text-blue-700" },
+    extracting: { icon: <Loader2 size={16} className="animate-spin" />, msg: "Extracting recipe with AI…",    cls: "bg-primary/5 border-primary/20 text-primary" },
+    done:       { icon: <CheckCircle2 size={16} />,                      msg: "Recipe imported successfully!", cls: "bg-green-50 border-green-200 text-green-700" },
+    error:      { icon: <AlertCircle size={16} />,                       msg: error ?? "Something went wrong", cls: "bg-red-50 border-red-200 text-red-700" },
+  }[phase];
+
+  return (
+    <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium ${config.cls}`}>
+      {config.icon}
+      <span>{config.msg}</span>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function ImportRecipe() {
   const [, setLocation] = useLocation();
   const { familyGroup } = useFamilyStore();
-  const { addRecipe } = useRecipeStore();
-  const aiMutation = useAiMutation();
-  
-  const [tab, setTab] = useState<"url" | "text">("url");
-  const [url, setUrl] = useState("");
-  const [text, setText] = useState("");
+  const { addRecipe }   = useRecipeStore();
+
+  const [tab, setTab]     = useState<"url" | "text">("url");
+  const [url, setUrl]     = useState("");
+  const [text, setText]   = useState("");
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [error, setError] = useState<string | undefined>();
+
+  const isLoading = phase === "fetching" || phase === "extracting";
 
   const handleImport = async () => {
-    const source = tab === "url" ? url : text;
-    if (!source) return;
+    if (isLoading) return;
+    setError(undefined);
 
-    const prompt = `Extract this recipe from ${tab}: ${source}. Return JSON with name, emoji, photo_color(hex), cuisine, cook_time, calories, protein, vegetarian, ingredients[{name, amount, category}], method[string].`;
+    // ── Text mode: send straight to AI ───────────────────────────────────────
+    if (tab === "text") {
+      if (!text.trim()) return;
+      setPhase("extracting");
+      try {
+        const parsed = await extractRecipeWithAi(text.trim());
+        const recipe = addRecipe({
+          ...parsed,
+          family_code: familyGroup!.code,
+          imported: true,
+        });
+        setPhase("done");
+        setTimeout(() => setLocation(`/recipe/${recipe.id}`), 600);
+      } catch {
+        setPhase("error");
+        setError("Could not extract recipe from that text. Try pasting more of the recipe.");
+      }
+      return;
+    }
+
+    // ── URL mode: scrape first, then AI if needed ─────────────────────────────
+    if (!url.trim() || !/^https?:\/\//i.test(url.trim())) {
+      setPhase("error");
+      setError("Please enter a valid URL starting with https://");
+      return;
+    }
 
     try {
-      const res = await aiMutation.mutateAsync({ prompt, responseFormat: "json" });
-      const parsed = JSON.parse(res.result);
-      
-      const newRecipe = addRecipe({
+      // Step 1: fetch the page server-side
+      setPhase("fetching");
+      const scrapeRes = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+
+      const scrapeData = await scrapeRes.json() as {
+        error?: string;
+        recipe?: Record<string, unknown>;
+        content?: string;
+        blocked?: boolean;
+        source?: string;
+      };
+
+      if (!scrapeRes.ok || scrapeData.error) {
+        throw new Error(scrapeData.error ?? "Could not fetch that page");
+      }
+
+      let parsed: Record<string, unknown>;
+
+      if (scrapeData.recipe) {
+        // JSON-LD found — no AI call needed
+        parsed = scrapeData.recipe;
+        setPhase("extracting"); // brief flash to show progress
+        await new Promise(r => setTimeout(r, 400));
+      } else if (scrapeData.content) {
+        // Scraped text — AI extracts
+        setPhase("extracting");
+        parsed = await extractRecipeWithAi(scrapeData.content);
+      } else if (scrapeData.blocked) {
+        // Site blocked our scraper — ask Claude from training knowledge
+        setPhase("extracting");
+        parsed = await extractRecipeFromUrlWithAi(url.trim());
+      } else {
+        throw new Error("Could not read content from that page. Try pasting the recipe text instead.");
+      }
+
+      const recipe = addRecipe({
         ...parsed,
         family_code: familyGroup!.code,
         imported: true,
-        source_url: tab === "url" ? url : undefined
+        source_url: url.trim(),
       });
-      
-      setLocation(`/recipe/${newRecipe.id}`);
-    } catch (e) {
-      console.error(e);
+
+      setPhase("done");
+      setTimeout(() => setLocation(`/recipe/${recipe.id}`), 600);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Import failed";
+      setPhase("error");
+      setError(msg);
     }
   };
 
@@ -47,55 +200,103 @@ export default function ImportRecipe() {
         <h1 className="text-2xl font-display font-bold">Import Recipe</h1>
       </header>
 
-      <div className="p-6 flex-1 flex flex-col gap-6">
+      <div className="p-6 flex-1 flex flex-col gap-5">
+
+        {/* Tabs */}
         <div className="flex bg-secondary p-1 rounded-xl">
-          <button 
-            onClick={() => setTab("url")} 
+          <button
+            onClick={() => { setTab("url"); setPhase("idle"); }}
             className={`flex-1 py-2.5 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-all ${tab === "url" ? "bg-white shadow-sm" : "text-muted-foreground"}`}
           >
             <LinkIcon size={16} /> URL
           </button>
-          <button 
-            onClick={() => setTab("text")} 
+          <button
+            onClick={() => { setTab("text"); setPhase("idle"); }}
             className={`flex-1 py-2.5 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-all ${tab === "text" ? "bg-white shadow-sm" : "text-muted-foreground"}`}
           >
             <FileText size={16} /> Paste Text
           </button>
         </div>
 
+        {/* Input */}
         {tab === "url" ? (
-          <Input 
-            placeholder="https://cooking-site.com/recipe" 
-            value={url} 
-            onChange={(e) => setUrl(e.target.value)}
-            autoFocus
-          />
+          <div className="space-y-2">
+            <Input
+              placeholder="https://cooking-site.com/recipe"
+              value={url}
+              onChange={e => { setUrl(e.target.value); if (phase === "error") setPhase("idle"); }}
+              autoFocus
+              disabled={isLoading}
+            />
+            <p className="text-xs text-muted-foreground px-1">
+              Works best with popular recipe sites — AllRecipes, Taste, BBC Good Food, Serious Eats, NYT Cooking, and many more.
+            </p>
+          </div>
         ) : (
-          <textarea 
-            className="w-full h-48 bg-white border-2 border-border rounded-xl p-4 text-sm focus:outline-none focus:border-primary resize-none"
-            placeholder="Paste ingredients and instructions here..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            autoFocus
-          />
+          <div className="space-y-2">
+            <textarea
+              className="w-full h-52 bg-white border-2 border-border rounded-xl p-4 text-sm focus:outline-none focus:border-primary resize-none"
+              placeholder="Paste the full recipe text here — ingredients, method steps, any details you have…"
+              value={text}
+              onChange={e => { setText(e.target.value); if (phase === "error") setPhase("idle"); }}
+              autoFocus
+              disabled={isLoading}
+            />
+            <p className="text-xs text-muted-foreground px-1">
+              Copy the recipe from anywhere — a website, a message, a screenshot's text. The more detail, the better.
+            </p>
+          </div>
         )}
 
-        <div className="mt-auto pb-4">
-          <Card className="bg-primary/5 border-primary/20 mb-6 border-dashed">
-            <h4 className="font-semibold text-primary mb-1 text-sm">AI Extraction</h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Our AI will automatically read the source and format it cleanly into ingredients, method steps, and extract nutrition info.
-            </p>
-          </Card>
+        {/* Status bar */}
+        <StatusBar phase={phase} error={error} />
 
-          <Button 
-            className="w-full" 
+        {/* How it works */}
+        {phase === "idle" && (
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 border-dashed">
+            <h4 className="font-semibold text-primary text-sm mb-1.5">How it works</h4>
+            <ul className="text-xs text-muted-foreground space-y-1.5">
+              {tab === "url" ? (
+                <>
+                  <li>• We fetch the recipe page and read structured recipe data automatically</li>
+                  <li>• If the site doesn't allow direct access, AI uses its training knowledge about the recipe</li>
+                  <li>• Ingredients, steps, nutrition, and cook time are all extracted</li>
+                  <li>• You can edit any details after it's saved to your library</li>
+                </>
+              ) : (
+                <>
+                  <li>• Paste any recipe text — structured or free-form</li>
+                  <li>• AI identifies ingredients, amounts, and method steps</li>
+                  <li>• Nutrition estimates are added automatically</li>
+                  <li>• You can edit anything after it's imported</li>
+                </>
+              )}
+            </ul>
+          </div>
+        )}
+
+        {/* Retry hint */}
+        {phase === "error" && tab === "url" && (
+          <button
+            onClick={() => { setTab("text"); setPhase("idle"); }}
+            className="text-sm text-primary underline text-center"
+          >
+            Try pasting the recipe text instead
+          </button>
+        )}
+
+        <div className="mt-auto">
+          <Button
+            className="w-full"
             size="lg"
             onClick={handleImport}
-            isLoading={aiMutation.isPending}
-            disabled={tab === "url" ? !url : !text}
+            disabled={isLoading || phase === "done" || (tab === "url" ? !url.trim() : !text.trim())}
           >
-            <Download className="mr-2 w-5 h-5" /> Import & Parse
+            {isLoading ? (
+              <><Loader2 size={18} className="mr-2 animate-spin" /> {phase === "fetching" ? "Fetching…" : "Extracting…"}</>
+            ) : (
+              <><Download size={18} className="mr-2" /> Import Recipe</>
+            )}
           </Button>
         </div>
       </div>
