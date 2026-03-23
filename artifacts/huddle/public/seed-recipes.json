@@ -1,0 +1,2427 @@
+[
+  {
+    "id": "seed_dinner_1_rvn07",
+    "name": "Slow-Roasted Lamb Shoulder",
+    "emoji": "🍖",
+    "photo_color": "#87CEEB",
+    "cuisine": "Western",
+    "cook_time": 240,
+    "calories": 650,
+    "protein": 52,
+    "carbs": 8,
+    "fat": 48,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "lamb shoulder",
+        "amount": "2kg",
+        "category": "meat"
+      },
+      {
+        "name": "olive oil",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "garlic cloves",
+        "amount": "6 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "fresh rosemary",
+        "amount": "3 sprigs",
+        "category": "spices"
+      },
+      {
+        "name": "fresh thyme",
+        "amount": "3 sprigs",
+        "category": "spices"
+      },
+      {
+        "name": "beef stock",
+        "amount": "500ml",
+        "category": "canned"
+      },
+      {
+        "name": "red wine",
+        "amount": "250ml",
+        "category": "condiments"
+      },
+      {
+        "name": "sea salt",
+        "amount": "2 tsp",
+        "category": "spices"
+      },
+      {
+        "name": "black pepper",
+        "amount": "1 tsp",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Preheat oven to 160°C. Pat the lamb shoulder dry and score the fat in a crosshatch pattern.",
+      "Rub the lamb with olive oil, salt, pepper, minced garlic, and herb leaves, coating all sides generously.",
+      "Place lamb in a large roasting pan, pour red wine and beef stock around it, and scatter remaining herb sprigs and garlic cloves nearby.",
+      "Cover tightly with foil and roast for 3.5-4 hours, basting with pan juices every 45 minutes.",
+      "Remove foil for the last 30 minutes to allow browning. The meat should be fork-tender and falling apart.",
+      "Rest for 15 minutes before carving. Strain pan juices and serve as gravy."
+    ],
+    "chef_tip": "Score the fat layer in a crosshatch pattern before roasting—this helps the salt penetrate deeply and creates crispy crackling edges while the meat stays succulent inside.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:03.224Z"
+  },
+  {
+    "id": "seed_dinner_2_h1n5m",
+    "name": "Beef and Guinness Pie",
+    "emoji": "🥧",
+    "photo_color": "#E87B9E",
+    "cuisine": "Western",
+    "cook_time": 180,
+    "calories": 680,
+    "protein": 38,
+    "carbs": 52,
+    "fat": 35,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "beef chuck",
+        "amount": "1.2kg",
+        "category": "meat"
+      },
+      {
+        "name": "Guinness stout",
+        "amount": "440ml",
+        "category": "condiments"
+      },
+      {
+        "name": "beef stock",
+        "amount": "300ml",
+        "category": "canned"
+      },
+      {
+        "name": "onions",
+        "amount": "3 large",
+        "category": "vegetables"
+      },
+      {
+        "name": "carrots",
+        "amount": "4 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "tomato paste",
+        "amount": "2 tbsp",
+        "category": "canned"
+      },
+      {
+        "name": "puff pastry",
+        "amount": "500g",
+        "category": "grains"
+      },
+      {
+        "name": "flour",
+        "amount": "3 tbsp",
+        "category": "grains"
+      },
+      {
+        "name": "olive oil",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "bay leaves",
+        "amount": "2",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Cut beef into 3cm chunks and toss with flour, salt, and pepper. Heat olive oil in a heavy pot and brown beef in batches, then set aside.",
+      "In the same pot, sauté diced onions and carrot chunks until golden, then stir in tomato paste and cook for 2 minutes.",
+      "Pour in Guinness and beef stock, scraping up browned bits. Return beef to pot with bay leaves. Cover and simmer for 2 hours until beef is tender.",
+      "Transfer filling to a pie dish and let cool slightly. Top with puff pastry, press edges to seal, and brush with beaten egg.",
+      "Bake at 200°C for 25-30 minutes until pastry is golden brown and puffed.",
+      "Rest for 5 minutes before serving hot."
+    ],
+    "chef_tip": "Brown the beef in batches without crowding the pan—overcrowding steams the meat instead of searing it, which prevents the deep caramelized flavor that makes this pie special.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:03.225Z"
+  },
+  {
+    "id": "seed_dinner_3_5bwh1",
+    "name": "Chicken and Mushroom Casserole",
+    "emoji": "🍗",
+    "photo_color": "#E8B45A",
+    "cuisine": "Western",
+    "cook_time": 90,
+    "calories": 580,
+    "protein": 45,
+    "carbs": 28,
+    "fat": 32,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "chicken thighs",
+        "amount": "8 pieces",
+        "category": "meat"
+      },
+      {
+        "name": "mushrooms",
+        "amount": "500g",
+        "category": "vegetables"
+      },
+      {
+        "name": "pearl onions",
+        "amount": "300g",
+        "category": "vegetables"
+      },
+      {
+        "name": "double cream",
+        "amount": "300ml",
+        "category": "dairy"
+      },
+      {
+        "name": "chicken stock",
+        "amount": "400ml",
+        "category": "canned"
+      },
+      {
+        "name": "white wine",
+        "amount": "150ml",
+        "category": "condiments"
+      },
+      {
+        "name": "butter",
+        "amount": "4 tbsp",
+        "category": "dairy"
+      },
+      {
+        "name": "thyme",
+        "amount": "2 sprigs",
+        "category": "spices"
+      },
+      {
+        "name": "sea salt",
+        "amount": "1 tsp",
+        "category": "spices"
+      },
+      {
+        "name": "black pepper",
+        "amount": "0.5 tsp",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Heat butter in a large casserole dish over medium-high heat. Season chicken thighs and brown skin-side down for 5 minutes, then flip and brown the other side. Remove and set aside.",
+      "In the same dish, sauté quartered mushrooms and pearl onions until golden, about 8 minutes. Season with salt and pepper.",
+      "Deglaze with white wine, scraping up browned bits, then add chicken stock and thyme sprigs. Return chicken to the dish, nestling it among vegetables.",
+      "Cover and transfer to a 180°C oven for 50 minutes until chicken is cooked through and vegetables are tender.",
+      "Remove from oven, stir in double cream until well combined, and simmer on stovetop for 5 minutes.",
+      "Taste and adjust seasoning before serving hot with crusty bread or mashed potatoes."
+    ],
+    "chef_tip": "Use chicken thighs instead of breasts—they stay moist and flavorful during the long cooking time, while breasts tend to dry out. The fat content also enriches the sauce beautifully.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:03.225Z"
+  },
+  {
+    "id": "seed_dinner_4_n2078",
+    "name": "Pork Belly with Apple Sauce",
+    "emoji": "🐷",
+    "photo_color": "#E87B9E",
+    "cuisine": "Western",
+    "cook_time": 150,
+    "calories": 720,
+    "protein": 48,
+    "carbs": 22,
+    "fat": 52,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "pork belly",
+        "amount": "1.5kg",
+        "category": "meat"
+      },
+      {
+        "name": "apples",
+        "amount": "5 medium",
+        "category": "fruit"
+      },
+      {
+        "name": "cider vinegar",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "cider",
+        "amount": "300ml",
+        "category": "condiments"
+      },
+      {
+        "name": "onion",
+        "amount": "1 large",
+        "category": "vegetables"
+      },
+      {
+        "name": "fresh sage",
+        "amount": "4 leaves",
+        "category": "spices"
+      },
+      {
+        "name": "sea salt",
+        "amount": "2 tsp",
+        "category": "spices"
+      },
+      {
+        "name": "black pepper",
+        "amount": "1 tsp",
+        "category": "spices"
+      },
+      {
+        "name": "honey",
+        "amount": "2 tbsp",
+        "category": "condiments"
+      }
+    ],
+    "method": [
+      "Score the pork belly skin in a fine crosshatch pattern using a sharp knife, cutting through the skin but not into the meat. Rub generously with sea salt and black pepper.",
+      "Place pork skin-side up in a roasting pan. Pour cider around (not over) the pork. Scatter sage leaves and roughly chopped onion around the meat.",
+      "Roast at 200°C for 30 minutes uncovered to crisp the skin, then reduce heat to 160°C, add a splash of water if needed, and continue roasting for 1.5-2 hours until the meat is tender.",
+      "Meanwhile, prepare apple sauce: peel, core, and slice apples. Cook with cider vinegar, honey, and 100ml cider in a saucepan over medium heat for 20 minutes, stirring occasionally until broken down into a chunky sauce.",
+      "Remove pork from oven and rest for 10 minutes. Slice against the grain and drizzle with pan juices.",
+      "Serve the sliced pork belly with warm apple sauce alongside."
+    ],
+    "chef_tip": "Score the skin consistently and deeply—this creates maximum surface area for crisping. Pat the skin completely dry before roasting and avoid covering it during the initial high-heat phase to ensure crackly, golden skin.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:03.225Z"
+  },
+  {
+    "id": "seed_dinner_5_9m9g3",
+    "name": "Baked Cod with Herb Crust",
+    "emoji": "🐟",
+    "photo_color": "#5AADE8",
+    "cuisine": "Western",
+    "cook_time": 25,
+    "calories": 520,
+    "protein": 52,
+    "carbs": 12,
+    "fat": 26,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "cod fillets",
+        "amount": "4 fillets, 180g each",
+        "category": "meat"
+      },
+      {
+        "name": "panko breadcrumbs",
+        "amount": "150g",
+        "category": "grains"
+      },
+      {
+        "name": "parmesan cheese",
+        "amount": "60g",
+        "category": "dairy"
+      },
+      {
+        "name": "fresh parsley",
+        "amount": "50g",
+        "category": "vegetables"
+      },
+      {
+        "name": "fresh dill",
+        "amount": "2 tbsp",
+        "category": "spices"
+      },
+      {
+        "name": "lemon",
+        "amount": "2",
+        "category": "fruit"
+      },
+      {
+        "name": "butter",
+        "amount": "60g",
+        "category": "dairy"
+      },
+      {
+        "name": "dijon mustard",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "sea salt",
+        "amount": "1 tsp",
+        "category": "spices"
+      },
+      {
+        "name": "black pepper",
+        "amount": "0.5 tsp",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Preheat oven to 200°C. Line a baking tray with parchment paper and lightly oil it.",
+      "Finely chop fresh parsley and dill. Mix panko breadcrumbs with grated parmesan, chopped herbs, salt, and pepper in a shallow bowl.",
+      "Pat cod fillets dry with paper towels. Lay on the prepared tray, skin-side down. Spread a thin layer of Dijon mustard on top of each fillet.",
+      "Press the herb-breadcrumb mixture onto the mustard-coated top of each cod fillet, pressing gently so it adheres. Dot each fillet with small pieces of butter.",
+      "Bake for 18-20 minutes until the crust is golden brown and the cod is opaque and flakes easily with a fork.",
+      "Squeeze fresh lemon juice over each fillet and serve immediately with steamed vegetables."
+    ],
+    "chef_tip": "Don't skip the Dijon mustard layer—it acts as an adhesive for the crust and adds subtle flavor, plus it prevents the cod from drying out during baking. Make sure the fish is patted completely dry so the crust crisps properly.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:03.225Z"
+  },
+  {
+    "id": "seed_dinner_6_c0clx",
+    "name": "Spaghetti Carbonara",
+    "emoji": "🍝",
+    "photo_color": "#8FBC8F",
+    "cuisine": "Italian",
+    "cook_time": 20,
+    "calories": 580,
+    "protein": 24,
+    "carbs": 58,
+    "fat": 26,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "spaghetti",
+        "amount": "400g",
+        "category": "grains"
+      },
+      {
+        "name": "guanciale",
+        "amount": "200g",
+        "category": "meat"
+      },
+      {
+        "name": "pecorino romano cheese",
+        "amount": "100g",
+        "category": "dairy"
+      },
+      {
+        "name": "large eggs",
+        "amount": "4",
+        "category": "dairy"
+      },
+      {
+        "name": "black pepper",
+        "amount": "1 teaspoon",
+        "category": "spices"
+      },
+      {
+        "name": "sea salt",
+        "amount": "to taste",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Bring a large pot of salted water to a boil and cook spaghetti until al dente, about 9-10 minutes.",
+      "While pasta cooks, dice the guanciale and fry in a large skillet over medium heat until fat renders and edges crisp, about 5-6 minutes.",
+      "In a bowl, whisk together eggs and finely grated pecorino romano cheese until well combined.",
+      "Reserve 1 cup of pasta water, then drain spaghetti.",
+      "Remove skillet from heat and quickly toss hot pasta with guanciale and fat, then add egg mixture while stirring constantly, adding pasta water as needed to create a creamy sauce.",
+      "Season with black pepper and serve immediately with extra cheese."
+    ],
+    "chef_tip": "The key to creamy carbonara without cream is timing: combine hot pasta with guanciale off heat while tossing vigorously so the eggs cook from residual heat without scrambling. If needed, add pasta water slowly to reach desired consistency.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:23.094Z"
+  },
+  {
+    "id": "seed_dinner_7_fk1zq",
+    "name": "Chicken Parmigiana",
+    "emoji": "🍗",
+    "photo_color": "#E85A5A",
+    "cuisine": "Italian",
+    "cook_time": 45,
+    "calories": 620,
+    "protein": 42,
+    "carbs": 32,
+    "fat": 28,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "chicken breasts",
+        "amount": "4 pieces (600g)",
+        "category": "meat"
+      },
+      {
+        "name": "all-purpose flour",
+        "amount": "100g",
+        "category": "grains"
+      },
+      {
+        "name": "eggs",
+        "amount": "2",
+        "category": "dairy"
+      },
+      {
+        "name": "breadcrumbs",
+        "amount": "150g",
+        "category": "grains"
+      },
+      {
+        "name": "mozzarella cheese",
+        "amount": "250g",
+        "category": "dairy"
+      },
+      {
+        "name": "parmesan cheese",
+        "amount": "80g",
+        "category": "dairy"
+      },
+      {
+        "name": "marinara sauce",
+        "amount": "500ml",
+        "category": "canned"
+      },
+      {
+        "name": "olive oil",
+        "amount": "100ml",
+        "category": "condiments"
+      },
+      {
+        "name": "garlic cloves",
+        "amount": "2",
+        "category": "vegetables"
+      },
+      {
+        "name": "fresh basil",
+        "amount": "8-10 leaves",
+        "category": "vegetables"
+      }
+    ],
+    "method": [
+      "Preheat oven to 200°C (400°F). Pound chicken breasts to ½ inch thickness between plastic wrap.",
+      "Set up three shallow bowls with flour, beaten eggs, and breadcrumbs mixed with 20g parmesan. Coat each chicken breast in flour, then egg, then breadcrumb mixture.",
+      "Heat olive oil in a large skillet over medium-high heat and fry breaded chicken until golden brown on both sides, about 3-4 minutes per side. Set aside on paper towels.",
+      "Spread a thin layer of marinara sauce on the bottom of a baking dish, arrange chicken pieces, top each with remaining sauce, mozzarella slices, and remaining parmesan.",
+      "Bake at 200°C for 15-18 minutes until cheese is melted and bubbly and sauce is hot.",
+      "Garnish with fresh basil leaves and serve immediately."
+    ],
+    "chef_tip": "To keep breaded chicken moist, let pounded breasts rest in the refrigerator for 30 minutes before breading. This helps the meat retain moisture during frying and prevents it from drying out in the oven.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:23.094Z"
+  },
+  {
+    "id": "seed_dinner_8_dera5",
+    "name": "Beef Lasagna",
+    "emoji": "🍲",
+    "photo_color": "#5AE8A0",
+    "cuisine": "Italian",
+    "cook_time": 75,
+    "calories": 680,
+    "protein": 38,
+    "carbs": 54,
+    "fat": 32,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "ground beef",
+        "amount": "600g",
+        "category": "meat"
+      },
+      {
+        "name": "lasagna sheets",
+        "amount": "12 sheets",
+        "category": "grains"
+      },
+      {
+        "name": "onion",
+        "amount": "1 large",
+        "category": "vegetables"
+      },
+      {
+        "name": "garlic cloves",
+        "amount": "3",
+        "category": "vegetables"
+      },
+      {
+        "name": "canned tomatoes",
+        "amount": "800g",
+        "category": "canned"
+      },
+      {
+        "name": "ricotta cheese",
+        "amount": "400g",
+        "category": "dairy"
+      },
+      {
+        "name": "mozzarella cheese",
+        "amount": "300g",
+        "category": "dairy"
+      },
+      {
+        "name": "parmesan cheese",
+        "amount": "100g",
+        "category": "dairy"
+      },
+      {
+        "name": "egg",
+        "amount": "1",
+        "category": "dairy"
+      },
+      {
+        "name": "olive oil",
+        "amount": "50ml",
+        "category": "condiments"
+      },
+      {
+        "name": "dried oregano",
+        "amount": "1 teaspoon",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Heat olive oil in a large pot, sauté finely chopped onion and minced garlic until soft, about 4 minutes. Add ground beef, breaking it up as it cooks until no pink remains, about 6-8 minutes.",
+      "Stir in canned tomatoes, oregano, salt, and pepper. Simmer for 20 minutes, stirring occasionally, until sauce thickens.",
+      "In a bowl, combine ricotta, 1 egg, half the mozzarella, 50g parmesan, salt, and pepper. Mix until smooth.",
+      "Preheat oven to 190°C (375°F). Spread thin layer of meat sauce in bottom of 9x13 inch baking dish, arrange 4 lasagna sheets, then half the ricotta mixture, then one-third of remaining meat sauce. Repeat layers, finishing with remaining meat sauce.",
+      "Top final layer with remaining mozzarella and 50g parmesan.",
+      "Cover with foil and bake for 25 minutes, then uncover and bake additional 15-20 minutes until cheese is golden and bubbling at edges."
+    ],
+    "chef_tip": "Let the assembled lasagna rest in the refrigerator for at least 2 hours (or overnight) before baking—this helps the layers set and the flavors meld, making it easier to cut and serve neat portions.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:23.094Z"
+  },
+  {
+    "id": "seed_dinner_9_h90j7",
+    "name": "Mushroom Risotto",
+    "emoji": "🍚",
+    "photo_color": "#E8905A",
+    "cuisine": "Italian",
+    "cook_time": 35,
+    "calories": 540,
+    "protein": 16,
+    "carbs": 68,
+    "fat": 18,
+    "vegetarian": true,
+    "ingredients": [
+      {
+        "name": "arborio rice",
+        "amount": "300g",
+        "category": "grains"
+      },
+      {
+        "name": "mixed mushrooms",
+        "amount": "400g",
+        "category": "vegetables"
+      },
+      {
+        "name": "vegetable stock",
+        "amount": "1 liter",
+        "category": "condiments"
+      },
+      {
+        "name": "onion",
+        "amount": "1 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "garlic cloves",
+        "amount": "2",
+        "category": "vegetables"
+      },
+      {
+        "name": "white wine",
+        "amount": "150ml",
+        "category": "condiments"
+      },
+      {
+        "name": "parmesan cheese",
+        "amount": "80g",
+        "category": "dairy"
+      },
+      {
+        "name": "butter",
+        "amount": "40g",
+        "category": "dairy"
+      },
+      {
+        "name": "olive oil",
+        "amount": "40ml",
+        "category": "condiments"
+      },
+      {
+        "name": "fresh thyme",
+        "amount": "1 teaspoon",
+        "category": "vegetables"
+      }
+    ],
+    "method": [
+      "Slice mushrooms into consistent pieces. Heat 20ml olive oil in a large skillet over medium-high heat, sauté mushrooms with salt and pepper until golden and liquid evaporates, about 8-10 minutes. Set aside.",
+      "Heat vegetable stock in a separate pot and maintain at a gentle simmer throughout cooking.",
+      "In a large, heavy-bottomed pan, heat remaining olive oil and 15g butter over medium heat. Finely dice onion and sauté until translucent, about 3 minutes. Add minced garlic and cook 1 minute more.",
+      "Add rice and stir constantly for 2 minutes until edges become translucent. Pour in white wine and stir until absorbed, about 2 minutes.",
+      "Begin adding warm stock one ladle at a time, stirring frequently. Wait until each addition is mostly absorbed before adding the next, about 18-20 minutes total until rice is creamy and al dente.",
+      "Fold in cooked mushrooms, thyme, remaining 25g butter, and grated parmesan. Adjust seasoning and serve immediately."
+    ],
+    "chef_tip": "The key to creamy risotto is constant stirring and patience—add stock gradually so the rice gradually releases its starches, creating natural creaminess. Never rush by adding all liquid at once, and use a wooden spoon which is gentler on the rice grains.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:23.094Z"
+  },
+  {
+    "id": "seed_dinner_10_xysdc",
+    "name": "Sicilian Baked Sea Bass",
+    "emoji": "🐟",
+    "photo_color": "#E87B9E",
+    "cuisine": "Mediterranean",
+    "cook_time": 40,
+    "calories": 520,
+    "protein": 48,
+    "carbs": 18,
+    "fat": 22,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "whole sea bass",
+        "amount": "1 fish (1.2kg)",
+        "category": "meat"
+      },
+      {
+        "name": "cherry tomatoes",
+        "amount": "300g",
+        "category": "vegetables"
+      },
+      {
+        "name": "green olives",
+        "amount": "100g",
+        "category": "canned"
+      },
+      {
+        "name": "capers",
+        "amount": "40g",
+        "category": "canned"
+      },
+      {
+        "name": "red onion",
+        "amount": "1 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "garlic cloves",
+        "amount": "3",
+        "category": "vegetables"
+      },
+      {
+        "name": "fresh parsley",
+        "amount": "20g",
+        "category": "vegetables"
+      },
+      {
+        "name": "fresh lemon",
+        "amount": "1",
+        "category": "fruit"
+      },
+      {
+        "name": "olive oil",
+        "amount": "80ml",
+        "category": "condiments"
+      },
+      {
+        "name": "sea salt and black pepper",
+        "amount": "to taste",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Preheat oven to 200°C (400°F). Clean sea bass thoroughly, leaving skin on, and pat dry with paper towels. Season cavity and exterior with salt and pepper.",
+      "Thinly slice red onion and mince garlic. Halve cherry tomatoes. Rinse capers and pit green olives.",
+      "In a large baking dish, create a bed with half the sliced onion. Place sea bass on top and stuff cavity with remaining onion, half the garlic, and half the parsley.",
+      "Scatter cherry tomatoes, green olives, capers, and remaining garlic around the fish. Drizzle everything with olive oil, squeeze fresh lemon juice over the fish and vegetables, and sprinkle with remaining parsley.",
+      "Cover baking dish with foil and bake for 25-30 minutes until fish flakes easily when tested with a fork at the thickest part.",
+      "Remove foil, garnish with fresh parsley and lemon slices, and serve hot directly from the baking dish."
+    ],
+    "chef_tip": "Ask your fishmonger to clean the sea bass for you, but keep the skin on—it protects the delicate flesh during baking. To check doneness, the flesh should be opaque and separate easily from the bones, not to the appearance of the eyes.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:23.094Z"
+  },
+  {
+    "id": "seed_dinner_11_8h1qu",
+    "name": "Butter Chicken",
+    "emoji": "🍗",
+    "photo_color": "#5AE89C",
+    "cuisine": "Indian",
+    "cook_time": 35,
+    "calories": 580,
+    "protein": 42,
+    "carbs": 18,
+    "fat": 38,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "Chicken breast",
+        "amount": "600g",
+        "category": "meat"
+      },
+      {
+        "name": "Yogurt",
+        "amount": "150g",
+        "category": "dairy"
+      },
+      {
+        "name": "Butter",
+        "amount": "60g",
+        "category": "dairy"
+      },
+      {
+        "name": "Heavy cream",
+        "amount": "200ml",
+        "category": "dairy"
+      },
+      {
+        "name": "Tomato puree",
+        "amount": "200g",
+        "category": "canned"
+      },
+      {
+        "name": "Garam masala",
+        "amount": "2 tsp",
+        "category": "spices"
+      },
+      {
+        "name": "Garlic",
+        "amount": "4 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "Ginger",
+        "amount": "2 tbsp",
+        "category": "vegetables"
+      },
+      {
+        "name": "Onion",
+        "amount": "2 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "Oil",
+        "amount": "2 tbsp",
+        "category": "condiments"
+      }
+    ],
+    "method": [
+      "Marinate chicken pieces in yogurt, ginger-garlic paste, garam masala, and salt for 30 minutes.",
+      "Heat oil in a large pan and cook marinated chicken until golden brown on all sides, then set aside.",
+      "In the same pan, melt butter and sauté onions until golden, then add tomato puree and cook for 5 minutes.",
+      "Add cream and remaining garam masala, stir well and return chicken to the pan.",
+      "Simmer on low heat for 15 minutes until chicken is cooked through and sauce thickens.",
+      "Taste and adjust seasoning before serving with basmati rice or naan."
+    ],
+    "chef_tip": "Marinate the chicken for at least 30 minutes — this tenderises the meat and allows the spices to penetrate deeply, resulting in much more flavourful chicken.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:41.443Z"
+  },
+  {
+    "id": "seed_dinner_12_mcuex",
+    "name": "Thai Green Prawn Curry",
+    "emoji": "🦐",
+    "photo_color": "#E8905A",
+    "cuisine": "Thai",
+    "cook_time": 25,
+    "calories": 420,
+    "protein": 38,
+    "carbs": 12,
+    "fat": 24,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "Large prawns",
+        "amount": "500g",
+        "category": "meat"
+      },
+      {
+        "name": "Thai green curry paste",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Coconut milk",
+        "amount": "400ml",
+        "category": "canned"
+      },
+      {
+        "name": "Thai eggplant",
+        "amount": "200g",
+        "category": "vegetables"
+      },
+      {
+        "name": "Thai basil",
+        "amount": "20g",
+        "category": "vegetables"
+      },
+      {
+        "name": "Fish sauce",
+        "amount": "2 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Lime",
+        "amount": "2",
+        "category": "fruit"
+      },
+      {
+        "name": "Green chillies",
+        "amount": "2",
+        "category": "vegetables"
+      },
+      {
+        "name": "Oil",
+        "amount": "1 tbsp",
+        "category": "condiments"
+      }
+    ],
+    "method": [
+      "Heat oil in a wok or large pan over medium-high heat and add curry paste, stirring for 2 minutes until fragrant.",
+      "Pour in coconut milk slowly while stirring to combine with the paste.",
+      "Add eggplant pieces and simmer for 5 minutes until slightly softened.",
+      "Add prawns to the curry, stir gently and cook for 4-5 minutes until they turn pink.",
+      "Season with fish sauce, add lime juice and sliced green chillies, then stir in fresh Thai basil.",
+      "Simmer for another 2 minutes and serve immediately with jasmine rice."
+    ],
+    "chef_tip": "Add the prawns only when the sauce is simmering — they cook quickly and adding them too early will cause them to become tough and rubbery. Fresh prawns need only 4-5 minutes.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:41.443Z"
+  },
+  {
+    "id": "seed_dinner_13_0j7s0",
+    "name": "Korean Beef Bulgogi",
+    "emoji": "🥩",
+    "photo_color": "#5AE8A0",
+    "cuisine": "Korean",
+    "cook_time": 40,
+    "calories": 510,
+    "protein": 48,
+    "carbs": 16,
+    "fat": 26,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "Beef sirloin",
+        "amount": "700g",
+        "category": "meat"
+      },
+      {
+        "name": "Soy sauce",
+        "amount": "6 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Sesame oil",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Brown sugar",
+        "amount": "3 tbsp",
+        "category": "other"
+      },
+      {
+        "name": "Garlic",
+        "amount": "6 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "Ginger",
+        "amount": "1 tbsp",
+        "category": "vegetables"
+      },
+      {
+        "name": "Pear",
+        "amount": "1 medium",
+        "category": "fruit"
+      },
+      {
+        "name": "Spring onions",
+        "amount": "4",
+        "category": "vegetables"
+      },
+      {
+        "name": "Sesame seeds",
+        "amount": "2 tbsp",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Slice beef thinly against the grain into 3-4mm pieces using a sharp knife or partially freeze the meat for easier slicing.",
+      "Grate pear and combine with minced garlic, ginger, soy sauce, sesame oil, and brown sugar to create the marinade.",
+      "Place beef in a bowl, pour marinade over it and mix well, ensuring all pieces are coated. Marinate for at least 30 minutes or overnight.",
+      "Heat a large skillet or griddle over high heat until very hot.",
+      "Cook marinated beef in batches for 2-3 minutes per side, stirring occasionally, until caramelised and cooked through.",
+      "Garnish with sliced spring onions and sesame seeds, then serve with steamed rice and pickled vegetables."
+    ],
+    "chef_tip": "Slice the beef very thinly against the grain — this ensures tender pieces that cook quickly and absorb the marinade flavour more effectively. Partially freezing the meat makes slicing much easier.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:41.443Z"
+  },
+  {
+    "id": "seed_dinner_14_fk4ny",
+    "name": "Japanese Chicken Teriyaki",
+    "emoji": "🍖",
+    "photo_color": "#639922",
+    "cuisine": "Japanese",
+    "cook_time": 30,
+    "calories": 480,
+    "protein": 44,
+    "carbs": 22,
+    "fat": 22,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "Chicken thighs",
+        "amount": "700g",
+        "category": "meat"
+      },
+      {
+        "name": "Soy sauce",
+        "amount": "5 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Mirin",
+        "amount": "4 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Sake",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Sugar",
+        "amount": "1 tbsp",
+        "category": "other"
+      },
+      {
+        "name": "Garlic",
+        "amount": "3 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "Ginger",
+        "amount": "1 tbsp",
+        "category": "vegetables"
+      },
+      {
+        "name": "Cornstarch",
+        "amount": "1 tbsp",
+        "category": "grains"
+      },
+      {
+        "name": "Water",
+        "amount": "2 tbsp",
+        "category": "other"
+      },
+      {
+        "name": "Sesame seeds",
+        "amount": "1 tbsp",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Pat chicken thighs dry with paper towels and season with salt and pepper on both sides.",
+      "Heat a large skillet over medium-high heat and cook chicken skin-side down for 6-7 minutes until skin is golden, then flip and cook for another 4 minutes.",
+      "In a bowl, combine soy sauce, mirin, sake, sugar, minced garlic, and ginger.",
+      "Pour the teriyaki sauce over the chicken and reduce heat to medium, simmering for 8-10 minutes until chicken is cooked through and sauce reduces slightly.",
+      "Mix cornstarch with water to create a slurry and stir into the pan to thicken the sauce to a glossy consistency.",
+      "Plate the chicken and drizzle with sauce, garnishing with sesame seeds and sliced spring onions, then serve with steamed rice."
+    ],
+    "chef_tip": "Use chicken thighs instead of breasts — they stay more moist and tender during cooking, and the darker meat absorbs the teriyaki sauce flavour much better than white meat.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:41.443Z"
+  },
+  {
+    "id": "seed_dinner_15_vf8z4",
+    "name": "Pad Thai",
+    "emoji": "🍜",
+    "photo_color": "#5AADE8",
+    "cuisine": "Thai",
+    "cook_time": 20,
+    "calories": 550,
+    "protein": 32,
+    "carbs": 58,
+    "fat": 20,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "Rice noodles",
+        "amount": "300g",
+        "category": "grains"
+      },
+      {
+        "name": "Prawns",
+        "amount": "250g",
+        "category": "meat"
+      },
+      {
+        "name": "Tamarind paste",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Fish sauce",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Palm sugar",
+        "amount": "2 tbsp",
+        "category": "other"
+      },
+      {
+        "name": "Garlic",
+        "amount": "4 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "Bean sprouts",
+        "amount": "150g",
+        "category": "vegetables"
+      },
+      {
+        "name": "Peanuts",
+        "amount": "50g",
+        "category": "other"
+      },
+      {
+        "name": "Lime",
+        "amount": "2",
+        "category": "fruit"
+      },
+      {
+        "name": "Oil",
+        "amount": "2 tbsp",
+        "category": "condiments"
+      }
+    ],
+    "method": [
+      "Soak rice noodles in warm water for 30 minutes until softened, then drain well.",
+      "In a small bowl, combine tamarind paste, fish sauce, and palm sugar, stirring until sugar dissolves.",
+      "Heat oil in a large wok or skillet over high heat and fry minced garlic for 30 seconds until fragrant.",
+      "Add prawns and stir-fry for 2-3 minutes until they turn pink, then push to the side of the wok.",
+      "Add drained noodles to the wok along with the sauce mixture and toss everything together for 3-4 minutes until noodles are heated through and evenly coated.",
+      "Remove from heat, stir in half the bean sprouts and top with crushed peanuts, remaining bean sprouts, and fresh lime wedges for serving."
+    ],
+    "chef_tip": "Toast the peanuts lightly in a dry pan before crushing them — this enhances their flavour and adds extra depth to the dish. Add them just before serving to keep them crispy and crunchy.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:40:41.443Z"
+  },
+  {
+    "id": "seed_dinner_16_j4klr",
+    "name": "Garlic Butter Prawns with Linguine",
+    "emoji": "🦐",
+    "photo_color": "#5AE8D8",
+    "cuisine": "Italian",
+    "cook_time": 20,
+    "calories": 580,
+    "protein": 38,
+    "carbs": 62,
+    "fat": 14,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "Large prawns",
+        "amount": "500g",
+        "category": "meat"
+      },
+      {
+        "name": "Linguine pasta",
+        "amount": "350g",
+        "category": "grains"
+      },
+      {
+        "name": "Butter",
+        "amount": "60g",
+        "category": "dairy"
+      },
+      {
+        "name": "Garlic cloves",
+        "amount": "8 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "Fresh parsley",
+        "amount": "30g",
+        "category": "vegetables"
+      },
+      {
+        "name": "Lemon",
+        "amount": "1 whole",
+        "category": "fruit"
+      },
+      {
+        "name": "Olive oil",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Sea salt",
+        "amount": "to taste",
+        "category": "spices"
+      },
+      {
+        "name": "Black pepper",
+        "amount": "to taste",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Cook linguine in salted boiling water according to package instructions until al dente, then drain and set aside.",
+      "Peel and devein prawns, pat dry with paper towels to remove excess moisture.",
+      "Heat olive oil in a large pan over medium-high heat, add minced garlic and sauté for 30 seconds until fragrant.",
+      "Add prawns to the pan and cook for 2-3 minutes on each side until pink and cooked through, then remove and set aside.",
+      "Reduce heat to medium, add butter to the pan and stir in cooked linguine along with the prawns, squeeze lemon juice over the dish and season with salt and pepper.",
+      "Toss everything together gently for 1-2 minutes, then plate and garnish with fresh parsley and lemon zest."
+    ],
+    "chef_tip": "Pat prawns completely dry before cooking to ensure they develop a golden exterior rather than steaming. Wet prawns will release moisture and prevent proper browning.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:02.369Z"
+  },
+  {
+    "id": "seed_dinner_17_y2g12",
+    "name": "Baked Lemon Herb Salmon",
+    "emoji": "🐟",
+    "photo_color": "#E87B9E",
+    "cuisine": "Mediterranean",
+    "cook_time": 25,
+    "calories": 520,
+    "protein": 42,
+    "carbs": 8,
+    "fat": 38,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "Salmon fillets",
+        "amount": "4 fillets, 180g each",
+        "category": "meat"
+      },
+      {
+        "name": "Fresh lemon",
+        "amount": "2 whole",
+        "category": "fruit"
+      },
+      {
+        "name": "Fresh dill",
+        "amount": "25g",
+        "category": "vegetables"
+      },
+      {
+        "name": "Fresh thyme",
+        "amount": "15g",
+        "category": "vegetables"
+      },
+      {
+        "name": "Olive oil",
+        "amount": "4 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Garlic cloves",
+        "amount": "4 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "Sea salt",
+        "amount": "to taste",
+        "category": "spices"
+      },
+      {
+        "name": "Black pepper",
+        "amount": "to taste",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Preheat oven to 200°C (400°F) and line a baking sheet with parchment paper.",
+      "Place salmon fillets skin-side down on the prepared baking sheet, season with salt and pepper.",
+      "Slice one lemon into thin rounds and arrange on top of each salmon fillet, then scatter minced garlic, fresh dill, and thyme around the fish.",
+      "Drizzle olive oil over the salmon and squeeze juice from the remaining lemon across all fillets.",
+      "Bake in the preheated oven for 15-18 minutes until the salmon is cooked through and flakes easily with a fork.",
+      "Transfer to serving plates and serve immediately with any accumulated pan juices spooned over the top."
+    ],
+    "chef_tip": "Don't overcook salmon—it continues cooking from residual heat after leaving the oven. Remove it when the thickest part still has a slight translucent centre, and it will be perfectly moist.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:02.369Z"
+  },
+  {
+    "id": "seed_dinner_18_3axdi",
+    "name": "Pan-Seared Cod with Capers",
+    "emoji": "🍳",
+    "photo_color": "#8FBC8F",
+    "cuisine": "European",
+    "cook_time": 18,
+    "calories": 410,
+    "protein": 48,
+    "carbs": 12,
+    "fat": 16,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "Cod fillets",
+        "amount": "4 fillets, 160g each",
+        "category": "meat"
+      },
+      {
+        "name": "Capers in brine",
+        "amount": "75g",
+        "category": "condiments"
+      },
+      {
+        "name": "Butter",
+        "amount": "40g",
+        "category": "dairy"
+      },
+      {
+        "name": "Olive oil",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Lemon",
+        "amount": "1 whole",
+        "category": "fruit"
+      },
+      {
+        "name": "Fresh parsley",
+        "amount": "20g",
+        "category": "vegetables"
+      },
+      {
+        "name": "Sea salt",
+        "amount": "to taste",
+        "category": "spices"
+      },
+      {
+        "name": "Black pepper",
+        "amount": "to taste",
+        "category": "spices"
+      },
+      {
+        "name": "Flour",
+        "amount": "30g",
+        "category": "grains"
+      }
+    ],
+    "method": [
+      "Pat cod fillets dry and season both sides generously with salt and pepper, then lightly dust with flour.",
+      "Heat olive oil in a large skillet over medium-high heat until shimmering.",
+      "Place cod fillets in the hot pan and cook for 4-5 minutes on the first side without moving them, then carefully flip and cook for another 3-4 minutes until golden and cooked through.",
+      "Transfer cod to serving plates, then reduce heat to medium and add butter to the pan.",
+      "Add rinsed capers to the butter and let them warm through for 1 minute, then squeeze lemon juice into the pan and stir.",
+      "Spoon the caper butter sauce over the cod fillets and garnish with fresh parsley before serving."
+    ],
+    "chef_tip": "Rinse capers briefly before using to remove excess salt from the brine—this prevents the dish from becoming too salty while maintaining the capers' distinctive briny flavour.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:02.369Z"
+  },
+  {
+    "id": "seed_dinner_19_zj9w6",
+    "name": "Fish Tacos with Mango Salsa",
+    "emoji": "🌮",
+    "photo_color": "#5A7CE8",
+    "cuisine": "Mexican",
+    "cook_time": 22,
+    "calories": 520,
+    "protein": 35,
+    "carbs": 58,
+    "fat": 12,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "White fish fillets",
+        "amount": "500g",
+        "category": "meat"
+      },
+      {
+        "name": "Corn tortillas",
+        "amount": "8 pieces",
+        "category": "grains"
+      },
+      {
+        "name": "Fresh mango",
+        "amount": "1 large",
+        "category": "fruit"
+      },
+      {
+        "name": "Fresh lime",
+        "amount": "3 whole",
+        "category": "fruit"
+      },
+      {
+        "name": "Fresh cilantro",
+        "amount": "30g",
+        "category": "vegetables"
+      },
+      {
+        "name": "Red onion",
+        "amount": "1 small",
+        "category": "vegetables"
+      },
+      {
+        "name": "Chilli powder",
+        "amount": "1 tsp",
+        "category": "spices"
+      },
+      {
+        "name": "Olive oil",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Sea salt",
+        "amount": "to taste",
+        "category": "spices"
+      },
+      {
+        "name": "Black pepper",
+        "amount": "to taste",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Make mango salsa by dicing fresh mango and red onion finely, then combine in a bowl with chopped cilantro, juice of 2 limes, salt, and pepper; set aside.",
+      "Season fish fillets with chilli powder, salt, pepper, and a squeeze of lime juice.",
+      "Heat olive oil in a large skillet over medium-high heat and cook fish fillets for 4-5 minutes per side until cooked through and flaking easily.",
+      "Gently warm corn tortillas in a dry pan or over a flame for 30 seconds per side to make them pliable.",
+      "Break the cooked fish into bite-sized pieces, then assemble tacos by placing fish on tortillas and topping with mango salsa.",
+      "Serve immediately with lime wedges and extra cilantro on the side."
+    ],
+    "chef_tip": "Prepare the mango salsa at least 15 minutes before serving so the flavours meld together. Make it just before serving fish though, so the mango stays fresh and the salsa maintains its vibrant texture.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:02.369Z"
+  },
+  {
+    "id": "seed_dinner_20_91vsv",
+    "name": "Spanish Seafood Paella",
+    "emoji": "🥘",
+    "photo_color": "#90E85A",
+    "cuisine": "Spanish",
+    "cook_time": 35,
+    "calories": 620,
+    "protein": 42,
+    "carbs": 68,
+    "fat": 14,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "Short-grain paella rice",
+        "amount": "400g",
+        "category": "grains"
+      },
+      {
+        "name": "Large prawns",
+        "amount": "250g",
+        "category": "meat"
+      },
+      {
+        "name": "Mussels",
+        "amount": "300g",
+        "category": "meat"
+      },
+      {
+        "name": "Cod or haddock",
+        "amount": "250g",
+        "category": "meat"
+      },
+      {
+        "name": "Fish stock",
+        "amount": "1 litre",
+        "category": "canned"
+      },
+      {
+        "name": "Red bell pepper",
+        "amount": "1 whole",
+        "category": "vegetables"
+      },
+      {
+        "name": "Onion",
+        "amount": "1 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "Garlic cloves",
+        "amount": "5 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "Saffron threads",
+        "amount": "0.5g",
+        "category": "spices"
+      },
+      {
+        "name": "Olive oil",
+        "amount": "5 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "Sea salt",
+        "amount": "to taste",
+        "category": "spices"
+      },
+      {
+        "name": "Black pepper",
+        "amount": "to taste",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Warm fish stock in a separate pot and steep saffron threads in it for 5 minutes to infuse.",
+      "Heat olive oil in a large paella pan (or wide shallow pan) over medium heat, sauté diced onion and minced garlic for 3 minutes until softened, then add diced bell pepper and cook for 2 more minutes.",
+      "Add rice to the pan and stir constantly for 2 minutes to toast the grains lightly.",
+      "Pour in the saffron-infused fish stock and bring to a simmer, then arrange seafood (prawns, fish chunks, and mussels) evenly over the rice without stirring; season with salt and pepper.",
+      "Allow the paella to cook undisturbed for 18-20 minutes until the rice is tender and liquid is mostly absorbed—the bottom should develop a light golden crust called socarrat.",
+      "Remove from heat, cover loosely with foil, and let rest for 5 minutes before serving directly from the pan."
+    ],
+    "chef_tip": "Don't stir the paella once the seafood and stock are added—the gentle, undisturbed cooking creates the signature crispy bottom layer called socarrat, which is essential to authentic paella texture and flavour.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:02.369Z"
+  },
+  {
+    "id": "seed_dinner_1_estwq",
+    "name": "Beef Tacos al Pastor",
+    "emoji": "🌮",
+    "photo_color": "#E85A5A",
+    "cuisine": "Mexican",
+    "cook_time": 45,
+    "calories": 580,
+    "protein": 32,
+    "carbs": 42,
+    "fat": 28,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "beef sirloin",
+        "amount": "500g",
+        "category": "meat"
+      },
+      {
+        "name": "dried guajillo chiles",
+        "amount": "4",
+        "category": "spices"
+      },
+      {
+        "name": "dried ancho chiles",
+        "amount": "3",
+        "category": "spices"
+      },
+      {
+        "name": "pineapple",
+        "amount": "200g fresh chunks",
+        "category": "fruit"
+      },
+      {
+        "name": "white onion",
+        "amount": "1 large",
+        "category": "vegetables"
+      },
+      {
+        "name": "fresh cilantro",
+        "amount": "30g",
+        "category": "vegetables"
+      },
+      {
+        "name": "corn tortillas",
+        "amount": "8",
+        "category": "grains"
+      },
+      {
+        "name": "lime",
+        "amount": "2",
+        "category": "fruit"
+      },
+      {
+        "name": "olive oil",
+        "amount": "3 tablespoons",
+        "category": "condiments"
+      },
+      {
+        "name": "garlic",
+        "amount": "4 cloves",
+        "category": "vegetables"
+      }
+    ],
+    "method": [
+      "Toast guajillo and ancho chiles in a dry skillet for 2 minutes, then soak in hot water for 10 minutes until soft.",
+      "Blend soaked chiles with garlic, half the onion, cumin, and 120ml of the soaking liquid to create a smooth marinade paste.",
+      "Slice beef sirloin against the grain into thin strips, combine with marinade, and let sit for 20 minutes.",
+      "Heat oil in a large skillet over high heat and cook marinated beef in batches for 3-4 minutes until caramelized, stirring frequently.",
+      "During the last 2 minutes of cooking, add pineapple chunks to the beef and warm through.",
+      "Char tortillas over an open flame or in a dry skillet, fill with beef mixture, top with diced onion and cilantro, and serve with lime wedges."
+    ],
+    "chef_tip": "Slice the beef against the grain into thin strips before marinating—this ensures maximum marinade absorption and creates tender, flavorful tacos in less time.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:40.029Z"
+  },
+  {
+    "id": "seed_dinner_2_c98p3",
+    "name": "Chicken Enchiladas Verde",
+    "emoji": "🌶️",
+    "photo_color": "#E8B45A",
+    "cuisine": "Mexican",
+    "cook_time": 50,
+    "calories": 620,
+    "protein": 38,
+    "carbs": 48,
+    "fat": 24,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "chicken breast",
+        "amount": "600g",
+        "category": "meat"
+      },
+      {
+        "name": "fresh tomatillos",
+        "amount": "600g",
+        "category": "vegetables"
+      },
+      {
+        "name": "poblano pepper",
+        "amount": "2",
+        "category": "vegetables"
+      },
+      {
+        "name": "onion",
+        "amount": "1 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "fresh cilantro",
+        "amount": "40g",
+        "category": "vegetables"
+      },
+      {
+        "name": "corn tortillas",
+        "amount": "10",
+        "category": "grains"
+      },
+      {
+        "name": "crema mexicana",
+        "amount": "200ml",
+        "category": "dairy"
+      },
+      {
+        "name": "cotija cheese",
+        "amount": "150g crumbled",
+        "category": "dairy"
+      },
+      {
+        "name": "garlic",
+        "amount": "3 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "vegetable broth",
+        "amount": "240ml",
+        "category": "canned"
+      }
+    ],
+    "method": [
+      "Boil chicken breasts in salted water with half the onion for 20 minutes until cooked through, then shred and set aside.",
+      "Roast tomatillos and poblano peppers under the broiler for 8 minutes until charred, peel the poblanos, and blend with tomatillos, cilantro, garlic, and 120ml broth to create verde sauce.",
+      "Warm tortillas over an open flame to make them pliable, then dip each in the verde sauce.",
+      "Fill each tortilla with 2 tablespoons shredded chicken and 1 tablespoon crumbled cheese, roll tightly, and place seam-side down in a buttered baking dish.",
+      "Mix remaining verde sauce with crema mexicana, pour over enchiladas, sprinkle remaining cotija cheese on top, and bake at 180°C for 20 minutes until bubbly and golden.",
+      "Garnish with fresh cilantro and extra crumbled cheese before serving."
+    ],
+    "chef_tip": "Dipping tortillas in the verde sauce before filling makes them more pliable and prevents cracking—warm them first over a flame for best results.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:40.030Z"
+  },
+  {
+    "id": "seed_dinner_3_ri2k0",
+    "name": "Moroccan Lamb Tagine",
+    "emoji": "🍲",
+    "photo_color": "#90E85A",
+    "cuisine": "Middle Eastern",
+    "cook_time": 90,
+    "calories": 650,
+    "protein": 42,
+    "carbs": 38,
+    "fat": 32,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "lamb shoulder",
+        "amount": "700g cubed",
+        "category": "meat"
+      },
+      {
+        "name": "onions",
+        "amount": "2 large",
+        "category": "vegetables"
+      },
+      {
+        "name": "dried apricots",
+        "amount": "150g",
+        "category": "fruit"
+      },
+      {
+        "name": "preserved lemons",
+        "amount": "2",
+        "category": "condiments"
+      },
+      {
+        "name": "ground ginger",
+        "amount": "2 teaspoons",
+        "category": "spices"
+      },
+      {
+        "name": "ground cumin",
+        "amount": "1.5 teaspoons",
+        "category": "spices"
+      },
+      {
+        "name": "cinnamon stick",
+        "amount": "1",
+        "category": "spices"
+      },
+      {
+        "name": "saffron threads",
+        "amount": "0.5g",
+        "category": "spices"
+      },
+      {
+        "name": "vegetable broth",
+        "amount": "480ml",
+        "category": "canned"
+      },
+      {
+        "name": "olive oil",
+        "amount": "4 tablespoons",
+        "category": "condiments"
+      },
+      {
+        "name": "fresh cilantro",
+        "amount": "25g",
+        "category": "vegetables"
+      }
+    ],
+    "method": [
+      "Heat olive oil in a tagine or large, heavy-bottomed pot over medium-high heat and brown lamb cubes in batches for 5 minutes total, setting aside.",
+      "In the same pot, sauté sliced onions for 4 minutes until golden, then add ginger, cumin, and cinnamon stick, stirring for 1 minute until fragrant.",
+      "Return lamb to the pot, add broth and saffron threads steeped in 60ml warm water, bring to a simmer, cover, and cook for 45 minutes.",
+      "Add dried apricots and preserved lemon quarters, adjust seasoning, cover again, and simmer for another 20 minutes until lamb is tender.",
+      "Remove cinnamon stick and preserved lemon, taste and adjust spices as needed.",
+      "Serve over couscous or with flatbread, garnished with fresh cilantro and toasted almonds if desired."
+    ],
+    "chef_tip": "Soak saffron threads in warm water for 10 minutes before adding to the tagine—this releases their deep color and complex flavor more effectively than adding them dry.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:40.030Z"
+  },
+  {
+    "id": "seed_dinner_4_mtpxd",
+    "name": "Shakshuka with Feta",
+    "emoji": "🍳",
+    "photo_color": "#9C5AE8",
+    "cuisine": "Middle Eastern",
+    "cook_time": 35,
+    "calories": 480,
+    "protein": 18,
+    "carbs": 22,
+    "fat": 34,
+    "vegetarian": true,
+    "ingredients": [
+      {
+        "name": "canned tomatoes",
+        "amount": "800g",
+        "category": "canned"
+      },
+      {
+        "name": "eggs",
+        "amount": "6 large",
+        "category": "dairy"
+      },
+      {
+        "name": "feta cheese",
+        "amount": "200g crumbled",
+        "category": "dairy"
+      },
+      {
+        "name": "red bell pepper",
+        "amount": "1",
+        "category": "vegetables"
+      },
+      {
+        "name": "onion",
+        "amount": "1 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "garlic",
+        "amount": "4 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "ground cumin",
+        "amount": "1 teaspoon",
+        "category": "spices"
+      },
+      {
+        "name": "paprika",
+        "amount": "0.5 teaspoon",
+        "category": "spices"
+      },
+      {
+        "name": "fresh parsley",
+        "amount": "30g",
+        "category": "vegetables"
+      },
+      {
+        "name": "olive oil",
+        "amount": "4 tablespoons",
+        "category": "condiments"
+      },
+      {
+        "name": "crusty bread",
+        "amount": "200g for serving",
+        "category": "grains"
+      }
+    ],
+    "method": [
+      "Heat olive oil in a large skillet over medium heat and sauté diced onion and bell pepper for 5 minutes until softened.",
+      "Add minced garlic, cumin, and paprika, cook for 1 minute until fragrant, then add canned tomatoes and their juice.",
+      "Simmer the tomato sauce uncovered for 12 minutes, stirring occasionally, until slightly thickened and oil begins to separate.",
+      "Create 6 wells in the sauce with the back of a spoon, crack an egg into each well, and sprinkle feta cheese around the eggs.",
+      "Cover the skillet and cook for 8-10 minutes over medium-low heat until egg whites are set but yolks remain runny.",
+      "Garnish with fresh parsley and serve immediately with crusty bread for dipping."
+    ],
+    "chef_tip": "Use eggs at room temperature and lower the heat to medium-low once you've added them—this prevents the bottoms from burning while the yolks stay perfectly runny.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:40.030Z"
+  },
+  {
+    "id": "seed_dinner_5_abswi",
+    "name": "Lebanese Chicken Shawarma",
+    "emoji": "🫔",
+    "photo_color": "#87CEEB",
+    "cuisine": "Middle Eastern",
+    "cook_time": 40,
+    "calories": 620,
+    "protein": 44,
+    "carbs": 36,
+    "fat": 26,
+    "vegetarian": false,
+    "ingredients": [
+      {
+        "name": "chicken thighs",
+        "amount": "800g boneless, skinless",
+        "category": "meat"
+      },
+      {
+        "name": "yogurt",
+        "amount": "200ml plain",
+        "category": "dairy"
+      },
+      {
+        "name": "lemon juice",
+        "amount": "100ml",
+        "category": "fruit"
+      },
+      {
+        "name": "garlic",
+        "amount": "6 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "onions",
+        "amount": "2 large",
+        "category": "vegetables"
+      },
+      {
+        "name": "sumac",
+        "amount": "1.5 teaspoons",
+        "category": "spices"
+      },
+      {
+        "name": "ground cumin",
+        "amount": "1 teaspoon",
+        "category": "spices"
+      },
+      {
+        "name": "pita bread",
+        "amount": "6 pieces",
+        "category": "grains"
+      },
+      {
+        "name": "tahini",
+        "amount": "150ml",
+        "category": "condiments"
+      },
+      {
+        "name": "tomatoes",
+        "amount": "2 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "olive oil",
+        "amount": "3 tablespoons",
+        "category": "condiments"
+      }
+    ],
+    "method": [
+      "Combine yogurt, lemon juice, minced garlic, sumac, and cumin in a bowl, add chicken thighs, coat well, cover, and marinate for at least 30 minutes or up to 4 hours.",
+      "Heat olive oil in a large skillet over medium-high heat and cook marinated chicken for 12-15 minutes, stirring frequently, until cooked through and starting to brown and char in places.",
+      "While chicken cooks, slice onions thinly and gently warm pita bread over a flame or in a dry skillet to keep it soft.",
+      "Prepare tahini sauce by whisking tahini with 120ml water, lemon juice, minced garlic, and salt until creamy and pourable.",
+      "Slice tomatoes and arrange on a platter with sliced onions and fresh parsley.",
+      "Fill warm pita with cooked chicken, top with tomato and onion slices, drizzle with tahini sauce, and serve immediately."
+    ],
+    "chef_tip": "Don't skip the marinating step—the yogurt and lemon acid tenderize the chicken while the spices infuse it deeply, creating authentic, tender shawarma in half the time of traditional rotisserie cooking.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:40.030Z"
+  },
+  {
+    "id": "seed_dinner_6_ph8dt",
+    "name": "Mushroom and Lentil Bolognese",
+    "emoji": "🍝",
+    "photo_color": "#E87B9E",
+    "cuisine": "Italian",
+    "cook_time": 35,
+    "calories": 580,
+    "protein": 22,
+    "carbs": 68,
+    "fat": 18,
+    "vegetarian": true,
+    "ingredients": [
+      {
+        "name": "brown lentils",
+        "amount": "200g",
+        "category": "grains"
+      },
+      {
+        "name": "mixed mushrooms, finely chopped",
+        "amount": "400g",
+        "category": "vegetables"
+      },
+      {
+        "name": "crushed tomatoes",
+        "amount": "400g canned",
+        "category": "canned"
+      },
+      {
+        "name": "onion, diced",
+        "amount": "1 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "garlic cloves, minced",
+        "amount": "3 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "olive oil",
+        "amount": "2 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "vegetable stock",
+        "amount": "300ml",
+        "category": "condiments"
+      },
+      {
+        "name": "dried oregano",
+        "amount": "1 tsp",
+        "category": "spices"
+      },
+      {
+        "name": "salt and black pepper",
+        "amount": "to taste",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Heat olive oil in a large pot over medium heat. Add diced onion and cook for 3 minutes until softened.",
+      "Stir in minced garlic and cook for 1 minute until fragrant.",
+      "Add finely chopped mushrooms and cook for 5 minutes, stirring occasionally, until they release their moisture.",
+      "Add brown lentils, crushed tomatoes, vegetable stock, and oregano. Bring to a simmer.",
+      "Reduce heat to low and simmer for 25 minutes until lentils are tender and sauce is thick, stirring occasionally.",
+      "Season with salt and pepper to taste, then serve over cooked pasta with fresh parsley and vegan parmesan if desired."
+    ],
+    "chef_tip": "Finely chop the mushrooms into small pieces so they break down and create a meat-like texture that mimics traditional Bolognese sauce consistency.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:57.932Z"
+  },
+  {
+    "id": "seed_dinner_7_uvlzp",
+    "name": "Chickpea and Spinach Curry",
+    "emoji": "🥘",
+    "photo_color": "#5AE8D8",
+    "cuisine": "Indian",
+    "cook_time": 30,
+    "calories": 520,
+    "protein": 18,
+    "carbs": 62,
+    "fat": 16,
+    "vegetarian": true,
+    "ingredients": [
+      {
+        "name": "chickpeas, canned and drained",
+        "amount": "2 x 400g",
+        "category": "canned"
+      },
+      {
+        "name": "fresh spinach, loosely packed",
+        "amount": "300g",
+        "category": "vegetables"
+      },
+      {
+        "name": "coconut milk",
+        "amount": "400ml",
+        "category": "canned"
+      },
+      {
+        "name": "onion, diced",
+        "amount": "1 large",
+        "category": "vegetables"
+      },
+      {
+        "name": "ginger, grated",
+        "amount": "2 tbsp",
+        "category": "vegetables"
+      },
+      {
+        "name": "garlic cloves, minced",
+        "amount": "4 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "curry powder",
+        "amount": "2 tsp",
+        "category": "spices"
+      },
+      {
+        "name": "vegetable oil",
+        "amount": "2 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "cumin seeds",
+        "amount": "1 tsp",
+        "category": "spices"
+      },
+      {
+        "name": "salt and lime juice",
+        "amount": "to taste",
+        "category": "condiments"
+      }
+    ],
+    "method": [
+      "Heat oil in a large pan over medium heat. Add cumin seeds and let them sizzle for 30 seconds.",
+      "Add diced onion and cook for 4 minutes until golden, then stir in grated ginger and minced garlic, cooking for 1 minute.",
+      "Add curry powder and cook for 1 minute, stirring constantly to prevent burning.",
+      "Pour in coconut milk and add drained chickpeas. Bring to a gentle simmer and cook for 10 minutes.",
+      "Stir in fresh spinach and cook for 3-4 minutes until wilted, then season with salt and a squeeze of lime juice.",
+      "Serve hot with rice or warm naan bread."
+    ],
+    "chef_tip": "Add the spinach at the very end of cooking to preserve its vibrant color and nutritional value—wilting happens in just 3-4 minutes.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:57.932Z"
+  },
+  {
+    "id": "seed_dinner_8_aqcny",
+    "name": "Roasted Vegetable Tart",
+    "emoji": "🥧",
+    "photo_color": "#5A7CE8",
+    "cuisine": "French",
+    "cook_time": 40,
+    "calories": 540,
+    "protein": 14,
+    "carbs": 58,
+    "fat": 26,
+    "vegetarian": true,
+    "ingredients": [
+      {
+        "name": "pre-made puff pastry sheet",
+        "amount": "320g",
+        "category": "grains"
+      },
+      {
+        "name": "zucchini, sliced",
+        "amount": "2 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "bell peppers, chopped",
+        "amount": "2 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "red onion, sliced",
+        "amount": "1 medium",
+        "category": "vegetables"
+      },
+      {
+        "name": "cherry tomatoes",
+        "amount": "250g",
+        "category": "vegetables"
+      },
+      {
+        "name": "olive oil",
+        "amount": "3 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "garlic cloves, minced",
+        "amount": "2 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "fresh thyme",
+        "amount": "1 tbsp",
+        "category": "other"
+      },
+      {
+        "name": "feta cheese, crumbled",
+        "amount": "100g",
+        "category": "dairy"
+      },
+      {
+        "name": "salt and pepper",
+        "amount": "to taste",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Preheat oven to 200°C (180°C fan). Toss all chopped vegetables with olive oil, minced garlic, thyme, salt, and pepper in a large bowl.",
+      "Arrange puff pastry on a baking tray lined with parchment paper.",
+      "Spread roasted vegetables evenly over the pastry, leaving a 2cm border around the edges.",
+      "Sprinkle crumbled feta cheese over the vegetables.",
+      "Bake for 35-40 minutes until the pastry is golden brown and crispy at the edges.",
+      "Allow to cool for 5 minutes, then cut into portions and serve warm or at room temperature."
+    ],
+    "chef_tip": "Roast your vegetables on a separate tray for 10-12 minutes before adding them to the pastry—this ensures they're cooked through and removes excess moisture so the pastry doesn't become soggy.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:57.932Z"
+  },
+  {
+    "id": "seed_dinner_9_tsj0s",
+    "name": "Black Bean Chili",
+    "emoji": "🌶️",
+    "photo_color": "#E8CA5A",
+    "cuisine": "Mexican",
+    "cook_time": 35,
+    "calories": 560,
+    "protein": 20,
+    "carbs": 72,
+    "fat": 12,
+    "vegetarian": true,
+    "ingredients": [
+      {
+        "name": "black beans, canned and drained",
+        "amount": "2 x 400g",
+        "category": "canned"
+      },
+      {
+        "name": "crushed tomatoes",
+        "amount": "400g canned",
+        "category": "canned"
+      },
+      {
+        "name": "onion, diced",
+        "amount": "1 large",
+        "category": "vegetables"
+      },
+      {
+        "name": "bell pepper, diced",
+        "amount": "1 large",
+        "category": "vegetables"
+      },
+      {
+        "name": "garlic cloves, minced",
+        "amount": "3 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "chili powder",
+        "amount": "2 tbsp",
+        "category": "spices"
+      },
+      {
+        "name": "cumin",
+        "amount": "1 tsp",
+        "category": "spices"
+      },
+      {
+        "name": "vegetable oil",
+        "amount": "2 tbsp",
+        "category": "condiments"
+      },
+      {
+        "name": "vegetable stock",
+        "amount": "200ml",
+        "category": "condiments"
+      },
+      {
+        "name": "salt, pepper, and lime juice",
+        "amount": "to taste",
+        "category": "spices"
+      }
+    ],
+    "method": [
+      "Heat vegetable oil in a large pot over medium heat. Add diced onion and bell pepper, cooking for 5 minutes until softened.",
+      "Stir in minced garlic and cook for 1 minute until fragrant.",
+      "Add chili powder and cumin, stirring constantly for 1 minute to bloom the spices.",
+      "Add canned black beans, crushed tomatoes, and vegetable stock. Bring to a boil, then reduce heat to low.",
+      "Simmer uncovered for 20 minutes, stirring occasionally, until the chili thickens.",
+      "Season with salt, pepper, and a squeeze of lime juice. Serve in bowls topped with diced onion, cilantro, and avocado if desired."
+    ],
+    "chef_tip": "Toast your chili powder and cumin in the oil for a full minute before adding the liquid—this intensifies their flavors and creates a much richer, more complex chili.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:57.932Z"
+  },
+  {
+    "id": "seed_dinner_10_xydx3",
+    "name": "Creamy Tomato Gnocchi",
+    "emoji": "🍚",
+    "photo_color": "#639922",
+    "cuisine": "Italian",
+    "cook_time": 25,
+    "calories": 610,
+    "protein": 16,
+    "carbs": 74,
+    "fat": 22,
+    "vegetarian": true,
+    "ingredients": [
+      {
+        "name": "gnocchi, fresh or frozen",
+        "amount": "500g",
+        "category": "grains"
+      },
+      {
+        "name": "crushed tomatoes",
+        "amount": "400g canned",
+        "category": "canned"
+      },
+      {
+        "name": "heavy cream",
+        "amount": "200ml",
+        "category": "dairy"
+      },
+      {
+        "name": "garlic cloves, minced",
+        "amount": "3 cloves",
+        "category": "vegetables"
+      },
+      {
+        "name": "onion, finely diced",
+        "amount": "1 small",
+        "category": "vegetables"
+      },
+      {
+        "name": "fresh basil leaves",
+        "amount": "15g",
+        "category": "other"
+      },
+      {
+        "name": "butter",
+        "amount": "2 tbsp",
+        "category": "dairy"
+      },
+      {
+        "name": "parmesan cheese, grated",
+        "amount": "50g",
+        "category": "dairy"
+      },
+      {
+        "name": "salt and black pepper",
+        "amount": "to taste",
+        "category": "spices"
+      },
+      {
+        "name": "white wine",
+        "amount": "100ml",
+        "category": "condiments"
+      }
+    ],
+    "method": [
+      "Melt butter in a large pan over medium heat. Add diced onion and cook for 3 minutes until softened, then add minced garlic and cook for 1 minute.",
+      "Pour in white wine and let it reduce by half, about 2 minutes, then add crushed tomatoes.",
+      "Simmer the tomato sauce for 8-10 minutes, stirring occasionally, until it thickens slightly.",
+      "Meanwhile, bring a large pot of salted water to a boil. Add gnocchi and cook until they float to the surface, then cook for another 1-2 minutes. Drain well.",
+      "Reduce heat to low and stir heavy cream and grated parmesan into the tomato sauce. Season with salt and pepper.",
+      "Add cooked gnocchi to the sauce, fold gently to combine, and serve immediately garnished with fresh basil."
+    ],
+    "chef_tip": "Don't stir the gnocchi vigorously once you've added the cream—gently fold it together to prevent the delicate gnocchi from breaking apart and becoming mushy.",
+    "notes": "",
+    "meal_slots": [
+      "dinner"
+    ],
+    "source_url": "",
+    "imported": false,
+    "family_code": "__seed__",
+    "created_at": "2026-03-23T10:41:57.932Z"
+  }
+]

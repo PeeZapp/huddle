@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "scrape-recipes": "tsx ./src/scrape-recipes.ts",
     "generate-recipes": "tsx ./src/generate-recipes.ts",
+    "generate-dinners": "tsx ./src/generate-dinners.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
