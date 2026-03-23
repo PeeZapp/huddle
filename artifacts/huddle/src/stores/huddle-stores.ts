@@ -5,6 +5,7 @@ import {
   CustomList, NutritionGoals, FoodLog, MealSlotData, MealSlotKey, Day 
 } from "@/lib/types";
 import { generateId, generateFamilyCode, getWeekStart } from "@/lib/utils";
+import { deduplicateIngredients } from "@/lib/amount-utils";
 
 // --- FAMILY STORE ---
 interface FamilyState {
@@ -159,26 +160,39 @@ export const useShoppingStore = create<ShoppingState>()(
       deleteItem: (id) => set({ items: get().items.filter((i) => i.id !== id) }),
       clearChecked: (fc) => set({ items: get().items.filter((i) => i.family_code !== fc || !i.checked) }),
       generateFromPlan: (plan, recipes) => {
-        const newItems: ShoppingItem[] = [];
+        // Collect every ingredient from every filled slot
+        const raw: { name: string; amount?: string; category?: string }[] = [];
         Object.values(plan.slots).forEach(slot => {
           if (slot.recipe_id) {
             const recipe = recipes.find(r => r.id === slot.recipe_id);
             if (recipe?.ingredients) {
               recipe.ingredients.forEach(ing => {
-                newItems.push({
-                  id: generateId(),
-                  name: ing.name,
-                  category: ing.category || "other",
-                  checked: false,
-                  week_start: plan.week_start,
-                  family_code: plan.family_code,
-                  created_at: new Date().toISOString()
-                });
+                raw.push({ name: ing.name, amount: ing.amount, category: ing.category });
               });
             }
           }
         });
-        set({ items: [...get().items, ...newItems] });
+
+        // Deduplicate by name and combine amounts (e.g. 3×50g butter → 150g butter)
+        const deduped = deduplicateIngredients(raw);
+
+        const now = new Date().toISOString();
+        const newItems: ShoppingItem[] = deduped.map(ing => ({
+          id: generateId(),
+          name: ing.name,
+          amount: ing.amount,
+          category: ing.category || "other",
+          checked: false,
+          week_start: plan.week_start,
+          family_code: plan.family_code,
+          created_at: now,
+        }));
+
+        // Remove any existing unchecked items from this week before adding fresh ones
+        const existing = get().items.filter(
+          i => i.family_code !== plan.family_code || i.week_start !== plan.week_start || i.checked
+        );
+        set({ items: [...existing, ...newItems] });
       }
     }),
     { name: "huddle-shopping" }

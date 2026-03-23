@@ -76,6 +76,7 @@ export interface MealPlan {
 export interface ShoppingItem {
   id: string;
   name: string;
+  amount?: string;
   category?: string;
   checked?: boolean;
   week_start?: string;

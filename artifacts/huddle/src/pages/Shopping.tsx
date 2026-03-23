@@ -193,7 +193,14 @@ export default function Shopping() {
                     onClick={() => toggleItem(item.id)}
                     className="w-6 h-6 rounded-full border-2 border-primary/40 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
                   />
-                  <span className="flex-1 font-medium text-sm">{item.name}</span>
+                  <span className="flex-1 font-medium text-sm">
+                    {item.name}
+                    {item.amount && (
+                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                        {item.amount}
+                      </span>
+                    )}
+                  </span>
                   <button
                     onClick={() => deleteItem(item.id)}
                     className="text-muted-foreground/50 hover:text-destructive transition-colors p-1 shrink-0"
@@ -239,7 +246,14 @@ export default function Shopping() {
                     >
                       <Check size={12} strokeWidth={3} />
                     </button>
-                    <span className="flex-1 line-through text-sm">{item.name}</span>
+                    <span className="flex-1 line-through text-sm">
+                      {item.name}
+                      {item.amount && (
+                        <span className="ml-1.5 text-xs font-normal">
+                          {item.amount}
+                        </span>
+                      )}
+                    </span>
                     <button
                       onClick={() => deleteItem(item.id)}
                       className="text-muted-foreground/40 hover:text-destructive transition-colors p-1 shrink-0"
