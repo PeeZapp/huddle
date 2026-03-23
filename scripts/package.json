@@ -5,10 +5,16 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "scrape-recipes": "tsx ./src/scrape-recipes.ts",
+    "generate-recipes": "tsx ./src/generate-recipes.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "tsx": "catalog:"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "node-fetch": "^3.3.2"
   }
 }

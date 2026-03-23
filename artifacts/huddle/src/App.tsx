@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppLayout from "@/components/layout/AppLayout";
@@ -11,6 +12,7 @@ import ImportRecipe from "@/pages/ImportRecipe";
 import Nutrition from "@/pages/Nutrition";
 import Lists from "@/pages/Lists";
 import Family from "@/pages/Family";
+import { useFamilyStore, useRecipeStore } from "@/stores/huddle-stores";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,10 +47,21 @@ function Router() {
   );
 }
 
+function SeedLoader() {
+  const { profile } = useFamilyStore();
+  const { loadSeeds } = useRecipeStore();
+  useEffect(() => {
+    const code = profile?.family_code;
+    if (code) loadSeeds(code);
+  }, [profile?.family_code, loadSeeds]);
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+        <SeedLoader />
         <AppLayout>
           <Router />
         </AppLayout>

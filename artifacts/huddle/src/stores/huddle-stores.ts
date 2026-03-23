@@ -50,22 +50,39 @@ export const useFamilyStore = create<FamilyState>()(
 // --- RECIPE STORE ---
 interface RecipeState {
   recipes: Recipe[];
+  seedsLoaded: boolean;
   addRecipe: (recipe: Omit<Recipe, "id" | "created_at">) => Recipe;
   updateRecipe: (id: string, updates: Partial<Recipe>) => void;
   deleteRecipe: (id: string) => void;
+  loadSeeds: (familyCode: string) => Promise<number>;
 }
 
 export const useRecipeStore = create<RecipeState>()(
   persist(
     (set, get) => ({
       recipes: [],
+      seedsLoaded: false,
       addRecipe: (data) => {
         const recipe: Recipe = { ...data, id: generateId(), created_at: new Date().toISOString() };
         set({ recipes: [...get().recipes, recipe] });
         return recipe;
       },
       updateRecipe: (id, updates) => set({ recipes: get().recipes.map((r) => r.id === id ? { ...r, ...updates } : r) }),
-      deleteRecipe: (id) => set({ recipes: get().recipes.filter((r) => r.id !== id) })
+      deleteRecipe: (id) => set({ recipes: get().recipes.filter((r) => r.id !== id) }),
+      loadSeeds: async (familyCode) => {
+        if (get().seedsLoaded) return 0;
+        try {
+          const base = import.meta.env.BASE_URL ?? "/";
+          const res = await fetch(`${base}seed-recipes.json`);
+          if (!res.ok) return 0;
+          const seeds: Recipe[] = await res.json();
+          const stamped = seeds.map((r) => ({ ...r, family_code: familyCode }));
+          set({ recipes: stamped, seedsLoaded: true });
+          return stamped.length;
+        } catch {
+          return 0;
+        }
+      },
     }),
     { name: "huddle-recipes" }
   )

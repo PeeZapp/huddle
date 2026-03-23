@@ -3,16 +3,18 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Users, Sparkles, ArrowRight } from "lucide-react";
 import { Button, Input } from "@/components/ui";
-import { useFamilyStore } from "@/stores/huddle-stores";
+import { useFamilyStore, useRecipeStore } from "@/stores/huddle-stores";
 
 export default function Setup() {
   const [, setLocation] = useLocation();
   const { setupProfile, createFamily, joinFamily } = useFamilyStore();
+  const { loadSeeds } = useRecipeStore();
   
   const [step, setStep] = useState<"name" | "action" | "create" | "join">("name");
   const [name, setName] = useState("");
   const [familyName, setFamilyName] = useState("");
   const [joinCode, setJoinCode] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSetupName = () => {
     if (name.trim()) {
@@ -21,16 +23,23 @@ export default function Setup() {
     }
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (familyName.trim()) {
-      createFamily(familyName);
+      setLoading(true);
+      const code = createFamily(familyName);
+      await loadSeeds(code);
+      setLoading(false);
       setLocation("/");
     }
   };
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (joinCode.trim()) {
-      joinFamily(joinCode.toUpperCase());
+      setLoading(true);
+      const code = joinCode.toUpperCase();
+      joinFamily(code);
+      await loadSeeds(code);
+      setLoading(false);
       setLocation("/");
     }
   };
@@ -90,8 +99,8 @@ export default function Setup() {
                 icon={<Users size={20} />}
                 autoFocus
               />
-              <Button className="w-full" onClick={handleCreate} disabled={!familyName.trim()}>
-                Start Planning
+              <Button className="w-full" onClick={handleCreate} disabled={!familyName.trim() || loading}>
+                {loading ? "Loading recipes…" : "Start Planning"}
               </Button>
               <button onClick={() => setStep("action")} className="text-sm text-muted-foreground underline mt-4">Back</button>
             </motion.div>
@@ -106,8 +115,8 @@ export default function Setup() {
                 className="uppercase tracking-widest text-center"
                 autoFocus
               />
-              <Button className="w-full" onClick={handleJoin} disabled={joinCode.length < 5}>
-                Join Family
+              <Button className="w-full" onClick={handleJoin} disabled={joinCode.length < 5 || loading}>
+                {loading ? "Loading recipes…" : "Join Family"}
               </Button>
               <button onClick={() => setStep("action")} className="text-sm text-muted-foreground underline mt-4">Back</button>
             </motion.div>
