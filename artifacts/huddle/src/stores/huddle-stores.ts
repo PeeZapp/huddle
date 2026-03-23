@@ -135,15 +135,22 @@ export const useRecipeStore = create<RecipeState>()(
         set({ recipes: cleaned });
       },
       loadSeeds: async (familyCode) => {
-        if (get().seedsLoaded) return 0;
         try {
           const base = import.meta.env.BASE_URL ?? "/";
           const res = await fetch(`${base}seed-recipes.json`);
           if (!res.ok) return 0;
           const seeds: Recipe[] = await res.json();
-          const stamped = seeds.map((r) => ({ ...r, family_code: familyCode }));
-          set({ recipes: stamped, seedsLoaded: true });
-          return stamped.length;
+          const existing = get().recipes;
+          const existingIds = new Set(existing.map((r) => r.id));
+          const newSeeds = seeds
+            .filter((r) => !existingIds.has(r.id))
+            .map((r) => ({ ...r, family_code: familyCode }));
+          if (newSeeds.length > 0) {
+            set({ recipes: [...existing, ...newSeeds], seedsLoaded: true });
+          } else {
+            set({ seedsLoaded: true });
+          }
+          return newSeeds.length;
         } catch {
           return 0;
         }
