@@ -12,7 +12,8 @@ import ImportRecipe from "@/pages/ImportRecipe";
 import Nutrition from "@/pages/Nutrition";
 import Lists from "@/pages/Lists";
 import Family from "@/pages/Family";
-import { useFamilyStore, useRecipeStore } from "@/stores/huddle-stores";
+import PriceSettings from "@/pages/PriceSettings";
+import { useFamilyStore, useRecipeStore, usePriceStore } from "@/stores/huddle-stores";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,18 +43,28 @@ function Router() {
       <Route path="/nutrition" component={Nutrition} />
       <Route path="/lists" component={Lists} />
       <Route path="/family" component={Family} />
+      <Route path="/prices" component={PriceSettings} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
 function SeedLoader() {
-  const { profile } = useFamilyStore();
-  const { loadSeeds } = useRecipeStore();
+  const { profile }           = useFamilyStore();
+  const { familyGroup }       = useFamilyStore();
+  const { loadSeeds }         = useRecipeStore();
+  const { checkAutoRefresh }  = usePriceStore();
+
   useEffect(() => {
     const code = profile?.family_code;
     if (code) loadSeeds(code);
   }, [profile?.family_code, loadSeeds]);
+
+  useEffect(() => {
+    // Check once on app load whether a monthly price refresh is due
+    checkAutoRefresh(familyGroup?.country);
+  }, []);
+
   return null;
 }
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ArrowLeft, Copy, Users, LogOut, Plus, Pencil, Trash2, Check, X, Globe } from "lucide-react";
+import { useLocation } from "wouter";
+import { ArrowLeft, Copy, Users, LogOut, Plus, Pencil, Trash2, Check, X, Globe, DollarSign, ChevronRight } from "lucide-react";
 import { Button, Input, Card, Badge } from "@/components/ui";
 import { useFamilyStore } from "@/stores/huddle-stores";
 import { FamilyMember } from "@/lib/types";
@@ -197,6 +198,7 @@ function MemberCard({
 
 export default function Family() {
   const { familyGroup, profile, updateFamily, leaveFamily } = useFamilyStore();
+  const [, setLocation] = useLocation();
 
   const [addingMember, setAddingMember]   = useState(false);
   const [editingId, setEditingId]         = useState<string | null>(null);
@@ -267,6 +269,23 @@ export default function Family() {
           </div>
           <p className="text-xs text-muted-foreground mt-2">Share this code to invite members</p>
         </Card>
+
+        {/* Ingredient prices link */}
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1 flex items-center gap-2">
+            <DollarSign size={13} /> Recipe Pricing
+          </h3>
+          <button
+            onClick={() => setLocation("/prices")}
+            className="w-full bg-white border border-border rounded-2xl p-4 flex items-center justify-between hover:bg-secondary/30 transition-colors"
+          >
+            <div className="text-left">
+              <p className="text-sm font-semibold">Ingredient Prices</p>
+              <p className="text-xs text-muted-foreground">AI-assisted estimates, updated monthly · set your own</p>
+            </div>
+            <ChevronRight size={18} className="text-muted-foreground" />
+          </button>
+        </section>
 
         {/* Country / location (for recipe costing) */}
         <section>

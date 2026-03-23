@@ -377,6 +377,91 @@ function estimateIngredientCostUSD(name: string, amount: string | undefined): nu
   return entry.priceUSD;
 }
 
+// ─── Ingredient catalog (user-facing price overrides) ─────────────────────────
+
+export interface CatalogIngredient {
+  key: string;
+  label: string;
+  category: string;
+  emoji: string;
+  baseAmount: number;
+  baseUnit: BaseUnit;
+  defaultPriceUSD: number;
+}
+
+export const INGREDIENT_CATALOG: CatalogIngredient[] = [
+  // Meat & Poultry
+  { key: "chicken breast", label: "Chicken Breast",       category: "Meat & Poultry", emoji: "🍗", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.90 },
+  { key: "chicken thigh",  label: "Chicken Thigh",        category: "Meat & Poultry", emoji: "🍗", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.65 },
+  { key: "beef mince",     label: "Beef Mince",           category: "Meat & Poultry", emoji: "🥩", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.90 },
+  { key: "beef steak",     label: "Beef Steak",           category: "Meat & Poultry", emoji: "🥩", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 2.00 },
+  { key: "lamb",           label: "Lamb",                 category: "Meat & Poultry", emoji: "🍖", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 1.40 },
+  { key: "pork",           label: "Pork",                 category: "Meat & Poultry", emoji: "🥩", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.80 },
+  { key: "bacon",          label: "Bacon",                category: "Meat & Poultry", emoji: "🥓", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 1.30 },
+  { key: "sausage",        label: "Sausages",             category: "Meat & Poultry", emoji: "🌭", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.90 },
+  // Seafood
+  { key: "salmon",         label: "Salmon",               category: "Seafood",        emoji: "🐟", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 2.20 },
+  { key: "prawn",          label: "Prawns / Shrimp",      category: "Seafood",        emoji: "🦐", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 2.00 },
+  { key: "tuna canned",    label: "Canned Tuna",          category: "Seafood",        emoji: "🐟", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.45 },
+  { key: "fish",           label: "White Fish",           category: "Seafood",        emoji: "🐠", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 1.50 },
+  // Dairy & Eggs
+  { key: "butter",         label: "Butter",               category: "Dairy & Eggs",   emoji: "🧈", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.80 },
+  { key: "milk",           label: "Milk",                 category: "Dairy & Eggs",   emoji: "🥛", baseAmount: 100, baseUnit: "ml",   defaultPriceUSD: 0.12 },
+  { key: "egg",            label: "Eggs",                 category: "Dairy & Eggs",   emoji: "🥚", baseAmount: 1,   baseUnit: "each", defaultPriceUSD: 0.35 },
+  { key: "cheddar",        label: "Cheddar Cheese",       category: "Dairy & Eggs",   emoji: "🧀", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 1.20 },
+  { key: "parmesan",       label: "Parmesan",             category: "Dairy & Eggs",   emoji: "🧀", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 2.00 },
+  { key: "cream",          label: "Cream",                category: "Dairy & Eggs",   emoji: "🫙", baseAmount: 100, baseUnit: "ml",   defaultPriceUSD: 0.45 },
+  { key: "yoghurt",        label: "Yoghurt",              category: "Dairy & Eggs",   emoji: "🫙", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.35 },
+  // Vegetables
+  { key: "onion",          label: "Onion",                category: "Vegetables",     emoji: "🧅", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.18 },
+  { key: "garlic",         label: "Garlic",               category: "Vegetables",     emoji: "🧄", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.50 },
+  { key: "tomato",         label: "Tomatoes",             category: "Vegetables",     emoji: "🍅", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.35 },
+  { key: "capsicum",       label: "Capsicum / Bell Pepper", category: "Vegetables",   emoji: "🫑", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.55 },
+  { key: "carrot",         label: "Carrot",               category: "Vegetables",     emoji: "🥕", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.15 },
+  { key: "potato",         label: "Potato",               category: "Vegetables",     emoji: "🥔", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.15 },
+  { key: "sweet potato",   label: "Sweet Potato",         category: "Vegetables",     emoji: "🍠", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.22 },
+  { key: "mushroom",       label: "Mushrooms",            category: "Vegetables",     emoji: "🍄", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.65 },
+  { key: "broccoli",       label: "Broccoli",             category: "Vegetables",     emoji: "🥦", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.30 },
+  { key: "spinach",        label: "Spinach",              category: "Vegetables",     emoji: "🥬", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.55 },
+  { key: "zucchini",       label: "Zucchini",             category: "Vegetables",     emoji: "🥒", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.35 },
+  // Fruit
+  { key: "lemon",          label: "Lemon",                category: "Fruit",          emoji: "🍋", baseAmount: 1,   baseUnit: "each", defaultPriceUSD: 0.60 },
+  { key: "avocado",        label: "Avocado",              category: "Fruit",          emoji: "🥑", baseAmount: 1,   baseUnit: "each", defaultPriceUSD: 1.20 },
+  { key: "mango",          label: "Mango",                category: "Fruit",          emoji: "🥭", baseAmount: 1,   baseUnit: "each", defaultPriceUSD: 1.00 },
+  // Pantry
+  { key: "pasta",          label: "Pasta (dry)",          category: "Pantry",         emoji: "🍝", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.18 },
+  { key: "rice",           label: "Rice",                 category: "Pantry",         emoji: "🍚", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.15 },
+  { key: "flour",          label: "Plain Flour",          category: "Pantry",         emoji: "🌾", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.08 },
+  { key: "olive oil",      label: "Olive Oil",            category: "Pantry",         emoji: "🫙", baseAmount: 15,  baseUnit: "ml",   defaultPriceUSD: 0.22 },
+  { key: "coconut milk",   label: "Coconut Milk",         category: "Pantry",         emoji: "🥥", baseAmount: 400, baseUnit: "ml",   defaultPriceUSD: 1.50 },
+  { key: "canned tomato",  label: "Canned Tomatoes",      category: "Pantry",         emoji: "🥫", baseAmount: 400, baseUnit: "g",    defaultPriceUSD: 0.90 },
+  { key: "chickpea",       label: "Chickpeas (tin)",      category: "Pantry",         emoji: "🫘", baseAmount: 400, baseUnit: "g",    defaultPriceUSD: 1.00 },
+  { key: "stock",          label: "Chicken Stock",        category: "Pantry",         emoji: "🍲", baseAmount: 100, baseUnit: "ml",   defaultPriceUSD: 0.06 },
+  { key: "soy sauce",      label: "Soy Sauce",            category: "Pantry",         emoji: "🫙", baseAmount: 15,  baseUnit: "ml",   defaultPriceUSD: 0.06 },
+  { key: "tomato paste",   label: "Tomato Paste",         category: "Pantry",         emoji: "🥫", baseAmount: 15,  baseUnit: "ml",   defaultPriceUSD: 0.12 },
+  { key: "honey",          label: "Honey",                category: "Pantry",         emoji: "🍯", baseAmount: 15,  baseUnit: "g",    defaultPriceUSD: 0.18 },
+  { key: "sugar",          label: "Sugar",                category: "Pantry",         emoji: "🍬", baseAmount: 100, baseUnit: "g",    defaultPriceUSD: 0.08 },
+];
+
+// Override price map — user or AI prices keyed by catalog key
+export type PriceOverrideMap = Record<string, { priceUSD: number; baseAmount: number; baseUnit: string }>;
+
+// Look up an ingredient name against the catalog and return an override if present
+function findOverridePrice(
+  ingredientName: string,
+  overrides: PriceOverrideMap,
+): { entry: CatalogIngredient; priceUSD: number } | null {
+  const n = ingredientName.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  for (const item of INGREDIENT_CATALOG) {
+    // Match if all words of the catalog key are present in the ingredient name
+    const keyWords = item.key.split(" ");
+    if (keyWords.every(w => n.includes(w)) && overrides[item.key]) {
+      return { entry: item, priceUSD: overrides[item.key].priceUSD };
+    }
+  }
+  return null;
+}
+
 // ─── Full recipe cost ─────────────────────────────────────────────────────────
 
 export interface RecipeCost {
@@ -387,14 +472,53 @@ export interface RecipeCost {
   confidence: "high" | "medium" | "low"; // based on % ingredients priced
 }
 
-export function estimateRecipeCost(recipe: Recipe, servings = 4): RecipeCost | null {
+export interface PriceOverrides {
+  userPrices: PriceOverrideMap;
+  aiPrices: PriceOverrideMap;
+}
+
+export function estimateRecipeCost(
+  recipe: Recipe,
+  servings = 4,
+  overrides?: PriceOverrides,
+): RecipeCost | null {
   if (!recipe.ingredients?.length) return null;
 
   let totalUSD = 0;
   let covered = 0;
 
   for (const ing of recipe.ingredients) {
-    const cost = estimateIngredientCostUSD(ing.name, ing.amount);
+    // Check user overrides first, then AI overrides, then static PRICE_DB
+    let cost: number | null = null;
+
+    if (overrides) {
+      const userMatch = findOverridePrice(ing.name, overrides.userPrices);
+      if (userMatch) {
+        const parsed = parseAmount(ing.amount ?? "");
+        const converted = parsed ? toBaseUnit(parsed.value, parsed.unit) : null;
+        if (converted && converted.unit === userMatch.entry.baseUnit) {
+          cost = (converted.value / userMatch.entry.baseAmount) * userMatch.priceUSD;
+        } else {
+          cost = userMatch.priceUSD;
+        }
+      } else {
+        const aiMatch = findOverridePrice(ing.name, overrides.aiPrices);
+        if (aiMatch) {
+          const parsed = parseAmount(ing.amount ?? "");
+          const converted = parsed ? toBaseUnit(parsed.value, parsed.unit) : null;
+          if (converted && converted.unit === aiMatch.entry.baseUnit) {
+            cost = (converted.value / aiMatch.entry.baseAmount) * aiMatch.priceUSD;
+          } else {
+            cost = aiMatch.priceUSD;
+          }
+        }
+      }
+    }
+
+    if (cost === null) {
+      cost = estimateIngredientCostUSD(ing.name, ing.amount);
+    }
+
     if (cost !== null) {
       totalUSD += cost;
       covered++;

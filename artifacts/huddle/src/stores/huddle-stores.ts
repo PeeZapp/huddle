@@ -6,6 +6,7 @@ import {
 } from "@/lib/types";
 import { generateId, generateFamilyCode, getWeekStart } from "@/lib/utils";
 import { deduplicateIngredients } from "@/lib/amount-utils";
+import { PriceOverrideMap } from "@/lib/recipe-costing";
 
 // --- FAMILY STORE ---
 interface FamilyState {
@@ -218,6 +219,89 @@ export const useNutritionStore = create<NutritionState>()(
       deleteLog: (id) => set({ logs: get().logs.filter(l => l.id !== id) })
     }),
     { name: "huddle-nutrition" }
+  )
+);
+
+// --- PRICE STORE ---
+
+interface PriceState {
+  aiPrices: PriceOverrideMap;
+  userPrices: PriceOverrideMap;
+  lastAiRefresh: string | null;
+  isRefreshing: boolean;
+  isSubscribed: boolean; // placeholder — connect to Stripe/RevenueCat during monetisation
+  refreshPrices: (country?: string) => Promise<void>;
+  setUserPrice: (key: string, priceUSD: number, baseAmount: number, baseUnit: string) => void;
+  clearUserPrice: (key: string) => void;
+  checkAutoRefresh: (country?: string) => void;
+  setSubscribed: (val: boolean) => void; // dev/test helper
+}
+
+export const usePriceStore = create<PriceState>()(
+  persist(
+    (set, get) => ({
+      aiPrices: {},
+      userPrices: {},
+      lastAiRefresh: null,
+      isRefreshing: false,
+      isSubscribed: false,
+
+      refreshPrices: async (country) => {
+        if (get().isRefreshing) return;
+        set({ isRefreshing: true });
+        try {
+          const res = await fetch("/api/prices/refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ country: country ?? null }),
+          });
+          if (!res.ok) throw new Error("Refresh failed");
+          const { prices, refreshedAt } = await res.json() as {
+            prices: PriceOverrideMap;
+            refreshedAt: string;
+          };
+          set({ aiPrices: prices, lastAiRefresh: refreshedAt });
+        } catch (err) {
+          console.error("Price refresh failed:", err);
+        } finally {
+          set({ isRefreshing: false });
+        }
+      },
+
+      setUserPrice: (key, priceUSD, baseAmount, baseUnit) => {
+        set(s => ({
+          userPrices: { ...s.userPrices, [key]: { priceUSD, baseAmount, baseUnit } },
+        }));
+      },
+
+      clearUserPrice: (key) => {
+        set(s => {
+          const next = { ...s.userPrices };
+          delete next[key];
+          return { userPrices: next };
+        });
+      },
+
+      setSubscribed: (val) => set({ isSubscribed: val }),
+
+      checkAutoRefresh: (country) => {
+        const { lastAiRefresh, isRefreshing, refreshPrices } = get();
+        if (isRefreshing) return;
+        if (!lastAiRefresh) {
+          refreshPrices(country);
+          return;
+        }
+        const last = new Date(lastAiRefresh);
+        const now  = new Date();
+        const differentMonth =
+          now.getFullYear() > last.getFullYear() ||
+          now.getMonth()    > last.getMonth();
+        if (differentMonth) {
+          refreshPrices(country);
+        }
+      },
+    }),
+    { name: "huddle-prices" }
   )
 );
 

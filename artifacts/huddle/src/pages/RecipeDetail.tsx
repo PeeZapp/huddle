@@ -5,7 +5,7 @@ import {
   DollarSign, Users, FileText, ToggleLeft, ToggleRight, Check,
 } from "lucide-react";
 import { Button, Badge } from "@/components/ui";
-import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
+import { useRecipeStore, useFamilyStore, usePriceStore } from "@/stores/huddle-stores";
 import { estimateRecipeCost, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
 
 export default function RecipeDetail() {
@@ -13,6 +13,7 @@ export default function RecipeDetail() {
   const [, setLocation]               = useLocation();
   const { recipes, updateRecipe, deleteRecipe } = useRecipeStore();
   const { familyGroup }               = useFamilyStore();
+  const { userPrices, aiPrices }      = usePriceStore();
 
   const recipe = recipes.find(r => r.id === id);
 
@@ -25,7 +26,7 @@ export default function RecipeDetail() {
 
   const servings = recipe.servings ?? 4;
   const currency = getCurrencyConfig(familyGroup?.country);
-  const cost     = estimateRecipeCost(recipe, servings);
+  const cost     = estimateRecipeCost(recipe, servings, { userPrices, aiPrices });
 
   const handleDelete = () => {
     if (confirm("Delete this recipe?")) {
