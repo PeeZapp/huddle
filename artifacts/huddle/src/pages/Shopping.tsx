@@ -1,22 +1,93 @@
 import { useState } from "react";
-import { Check, Plus, Trash2, Wand2 } from "lucide-react";
-import { Button, Input, Card } from "@/components/ui";
+import { Check, Plus, Trash2, Wand2, ShoppingCart } from "lucide-react";
+import { Button, Input } from "@/components/ui";
 import { useShoppingStore, useMealPlanStore, useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
 import { getWeekStart } from "@/lib/utils";
+import { ShoppingItem } from "@/lib/types";
+
+// ─── Category config ─────────────────────────────────────────────────────────
+
+interface CategoryDef {
+  label: string;
+  emoji: string;
+  keywords: string[];
+}
+
+const CATEGORY_DEFS: CategoryDef[] = [
+  { label: "Bakery",          emoji: "🍞", keywords: ["bakery","bread","baked","pastry","roll"] },
+  { label: "Dairy & Eggs",    emoji: "🥛", keywords: ["dairy","egg","milk","cream","cheese","butter","yoghurt","yogurt"] },
+  { label: "Deli & Chilled",  emoji: "🧆", keywords: ["deli","chilled","tofu","halloumi","chorizo","prosciutto","pancetta"] },
+  { label: "Drinks",          emoji: "🧃", keywords: ["drink","beverage","juice","water","wine","beer","soda","cola","tea","coffee"] },
+  { label: "Fish & Seafood",  emoji: "🐟", keywords: ["fish","seafood","salmon","cod","prawn","shrimp","tuna","anchovy","clam","lobster","mussel","squid","sea bass","seabass"] },
+  { label: "Frozen",          emoji: "🧊", keywords: ["frozen"] },
+  { label: "Fruit",           emoji: "🍎", keywords: ["fruit","apple","banana","lemon","lime","orange","mango","berry","berries","grape","pear","peach","avocado","tomato"] },
+  { label: "Grains & Pasta",  emoji: "🍝", keywords: ["grain","pasta","rice","noodle","spaghetti","penne","linguine","fettuccine","couscous","quinoa","oat","flour","breadcrumb","bulgur"] },
+  { label: "Herbs & Spices",  emoji: "🌿", keywords: ["herb","spice","basil","parsley","cilantro","coriander","thyme","rosemary","oregano","mint","cumin","paprika","turmeric","ginger","chilli","chili","pepper","salt","bay","saffron","cardamom","cinnamon","clove","nutmeg","allspice","star anise","sumac","za'atar","ras el hanout"] },
+  { label: "Meat & Poultry",  emoji: "🥩", keywords: ["meat","beef","pork","chicken","lamb","turkey","veal","mince","sausage","bacon","poultry","steak","rib","brisket","pulled"] },
+  { label: "Oils & Condiments", emoji: "🫙", keywords: ["oil","vinegar","sauce","condiment","ketchup","mustard","mayo","mayonnaise","soy","fish sauce","oyster sauce","worcestershire","tahini","miso","paste","stock","broth","harissa","sriracha","tabasco"] },
+  { label: "Tins & Jars",     emoji: "🥫", keywords: ["tin","can","jar","canned","tinned","bean","lentil","chickpea","tomato paste","coconut milk","baked bean","kidney bean","black bean"] },
+  { label: "Vegetables",      emoji: "🥦", keywords: ["vegetable","veg","onion","garlic","carrot","celery","broccoli","spinach","mushroom","courgette","zucchini","aubergine","eggplant","potato","sweet potato","capsicum","pepper","leek","cabbage","cauliflower","kale","asparagus","pea","corn","sweetcorn","artichoke","fennel","beetroot","beet","radish","cucumber","lettuce","rocket","arugula","spring onion","scallion","shallot","bok choy","pak choi"] },
+  { label: "Other",           emoji: "🛒", keywords: [] },
+];
+
+function resolveCategory(raw: string | undefined): string {
+  if (!raw) return "Other";
+  const lower = raw.toLowerCase().trim();
+
+  // Direct match on the label
+  const direct = CATEGORY_DEFS.find(c => c.label.toLowerCase() === lower);
+  if (direct) return direct.label;
+
+  // Keyword match
+  for (const def of CATEGORY_DEFS) {
+    if (def.keywords.some(kw => lower.includes(kw))) return def.label;
+  }
+  return "Other";
+}
+
+function categoryEmoji(label: string): string {
+  return CATEGORY_DEFS.find(c => c.label === label)?.emoji ?? "🛒";
+}
+
+// ─── Grouping helpers ─────────────────────────────────────────────────────────
+
+function groupByCategory(items: ShoppingItem[]): Map<string, ShoppingItem[]> {
+  const map = new Map<string, ShoppingItem[]>();
+  const sorted = [...items].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+  );
+  for (const item of sorted) {
+    const cat = resolveCategory(item.category);
+    if (!map.has(cat)) map.set(cat, []);
+    map.get(cat)!.push(item);
+  }
+  // Sort categories alphabetically (Other always last)
+  return new Map(
+    [...map.entries()].sort(([a], [b]) => {
+      if (a === "Other") return 1;
+      if (b === "Other") return -1;
+      return a.localeCompare(b);
+    }),
+  );
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Shopping() {
-  const { familyGroup } = useFamilyStore();
+  const { familyGroup }                                           = useFamilyStore();
   const { items, addItem, toggleItem, deleteItem, clearChecked, generateFromPlan } = useShoppingStore();
-  const { getPlan } = useMealPlanStore();
-  const { recipes } = useRecipeStore();
-  
-  const [newItem, setNewItem] = useState("");
+  const { getPlan }                                              = useMealPlanStore();
+  const { recipes }                                              = useRecipeStore();
+
+  const [newItem, setNewItem]     = useState("");
+  const [newCategory, setNewCategory] = useState("Other");
+  const [showCatPicker, setShowCatPicker] = useState(false);
   const weekStart = getWeekStart();
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.trim()) return;
-    addItem({ name: newItem.trim(), category: "other", family_code: familyGroup!.code });
+    addItem({ name: newItem.trim(), category: newCategory, family_code: familyGroup!.code });
     setNewItem("");
   };
 
@@ -25,12 +96,15 @@ export default function Shopping() {
     generateFromPlan(plan, recipes);
   };
 
-  // Group items by category
-  const activeItems = items.filter(i => !i.checked);
-  const checkedItems = items.filter(i => i.checked);
+  const activeItems  = items.filter(i => i.family_code === familyGroup?.code && !i.checked);
+  const checkedItems = items.filter(i => i.family_code === familyGroup?.code && i.checked);
+
+  const grouped = groupByCategory(activeItems);
+  const isEmpty = activeItems.length === 0 && checkedItems.length === 0;
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col min-h-full pb-24">
+      {/* Header */}
       <header className="px-6 pt-12 pb-6 bg-white sticky top-0 z-20 border-b border-border/50">
         <div className="flex justify-between items-end">
           <div>
@@ -44,66 +118,140 @@ export default function Shopping() {
       </header>
 
       <div className="p-6 space-y-6">
-        <form onSubmit={handleAdd} className="flex gap-2">
-          <Input 
-            placeholder="Add item..." 
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            className="flex-1"
-          />
-          <Button type="submit" size="icon" className="shrink-0"><Plus size={20} /></Button>
-        </form>
 
-        <div className="space-y-3">
-          {activeItems.length === 0 && checkedItems.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <ShoppingCartIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
-              <p>Your list is empty.</p>
+        {/* Add item form */}
+        <div className="space-y-2">
+          <form onSubmit={handleAdd} className="flex gap-2">
+            <Input
+              placeholder="Add item…"
+              value={newItem}
+              onChange={e => setNewItem(e.target.value)}
+              className="flex-1"
+            />
+            <Button type="submit" size="icon" className="shrink-0"><Plus size={20} /></Button>
+          </form>
+
+          {/* Category picker */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground">Category:</span>
+            {showCatPicker ? (
+              <div className="flex gap-1.5 flex-wrap">
+                {CATEGORY_DEFS.map(c => (
+                  <button
+                    key={c.label}
+                    onClick={() => { setNewCategory(c.label); setShowCatPicker(false); }}
+                    className={`text-xs px-2 py-1 rounded-lg border transition-colors ${
+                      newCategory === c.label
+                        ? "bg-primary text-white border-primary"
+                        : "bg-white border-border hover:border-primary/40"
+                    }`}
+                  >
+                    {c.emoji} {c.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowCatPicker(true)}
+                className="text-xs px-2.5 py-1 rounded-lg bg-secondary border border-border hover:border-primary/30 transition-colors"
+              >
+                {categoryEmoji(newCategory)} {newCategory} ▾
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Empty state */}
+        {isEmpty && (
+          <div className="text-center py-16 text-muted-foreground">
+            <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-20" />
+            <p className="font-medium">Your list is empty</p>
+            <p className="text-sm mt-1">Add items above or sync from your meal plan</p>
+          </div>
+        )}
+
+        {/* Active items grouped by category */}
+        {[...grouped.entries()].map(([category, catItems]) => (
+          <div key={category}>
+            {/* Category header */}
+            <div className="flex items-center gap-2 mb-2 mt-1">
+              <span className="text-base leading-none">{categoryEmoji(category)}</span>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                {category}
+              </h2>
+              <span className="text-xs text-muted-foreground/60">({catItems.length})</span>
             </div>
-          ) : null}
 
-          {activeItems.map(item => (
-            <div key={item.id} className="flex items-center gap-3 bg-white p-4 rounded-xl border border-border shadow-sm">
-              <button 
-                onClick={() => toggleItem(item.id)}
-                className="w-6 h-6 rounded-full border-2 border-primary/40 flex items-center justify-center hover:border-primary transition-colors"
-              />
-              <span className="flex-1 font-medium">{item.name}</span>
-              <button onClick={() => deleteItem(item.id)} className="text-muted-foreground hover:text-destructive p-1">
-                <Trash2 size={16} />
+            {/* Items */}
+            <div className="space-y-2">
+              {catItems.map(item => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-border shadow-sm"
+                >
+                  <button
+                    onClick={() => toggleItem(item.id)}
+                    className="w-6 h-6 rounded-full border-2 border-primary/40 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
+                  />
+                  <span className="flex-1 font-medium text-sm">{item.name}</span>
+                  <button
+                    onClick={() => deleteItem(item.id)}
+                    className="text-muted-foreground/50 hover:text-destructive transition-colors p-1 shrink-0"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* Checked / ticked off items */}
+        {checkedItems.length > 0 && (
+          <div className="pt-4 border-t border-border/50">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base">✅</span>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Ticked off
+                </h2>
+                <span className="text-xs text-muted-foreground/60">({checkedItems.length})</span>
+              </div>
+              <button
+                onClick={() => clearChecked(familyGroup!.code)}
+                className="text-xs font-semibold text-destructive hover:underline"
+              >
+                Clear all
               </button>
             </div>
-          ))}
 
-          {checkedItems.length > 0 && (
-            <div className="pt-6 mt-6 border-t border-border/50">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold text-muted-foreground">Checked Items</h3>
-                <button onClick={() => clearChecked(familyGroup!.code)} className="text-xs font-semibold text-destructive">
-                  Clear All
-                </button>
-              </div>
-              <div className="space-y-2 opacity-60">
-                {checkedItems.map(item => (
-                  <div key={item.id} className="flex items-center gap-3 bg-secondary/50 p-3 rounded-lg">
-                    <button 
+            <div className="space-y-2">
+              {[...checkedItems]
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+                .map(item => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 bg-secondary/40 p-3 rounded-xl opacity-60"
+                  >
+                    <button
                       onClick={() => toggleItem(item.id)}
-                      className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center"
+                      className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0"
                     >
                       <Check size={12} strokeWidth={3} />
                     </button>
-                    <span className="flex-1 line-through decoration-primary/30 text-sm">{item.name}</span>
+                    <span className="flex-1 line-through text-sm">{item.name}</span>
+                    <button
+                      onClick={() => deleteItem(item.id)}
+                      className="text-muted-foreground/40 hover:text-destructive transition-colors p-1 shrink-0"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 ))}
-              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
-}
-
-function ShoppingCartIcon(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>;
 }
