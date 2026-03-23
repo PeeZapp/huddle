@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Link } from "wouter";
-import { Search, Download, Refrigerator, X, ChevronRight } from "lucide-react";
-import { Input, Button, Badge } from "@/components/ui";
+import { Search, Download, Refrigerator, X, Plus } from "lucide-react";
+import { Input, Button } from "@/components/ui";
 import { useRecipeStore } from "@/stores/huddle-stores";
 import { Recipe } from "@/lib/types";
 
@@ -11,13 +11,32 @@ function normalize(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
 }
 
+// Split a phrase into meaningful words (3+ chars)
+function words(s: string): string[] {
+  return normalize(s).split(/\s+/).filter(w => w.length >= 3);
+}
+
 function scoreRecipe(recipe: Recipe, pantry: string[]): { matched: number; total: number } {
-  if (!pantry.length || !recipe.ingredients?.length) return { matched: 0, total: recipe.ingredients?.length ?? 0 };
-  const normPantry = pantry.map(normalize);
+  if (!pantry.length || !recipe.ingredients?.length) {
+    return { matched: 0, total: recipe.ingredients?.length ?? 0 };
+  }
+
+  // Build a flat set of all significant words from every pantry entry
+  const pantryWordSet = new Set(pantry.flatMap(words));
+  // Also keep full normalized phrases for phrase-level matching
+  const pantryPhrases = pantry.map(normalize);
+
   let matched = 0;
   for (const ing of recipe.ingredients) {
-    const normIng = normalize(ing.name);
-    if (normPantry.some(p => p.length >= 3 && normIng.includes(p))) matched++;
+    const ingNorm  = normalize(ing.name);
+    const ingWords = words(ing.name);
+
+    // 1. Any word in the ingredient name matches a pantry word
+    const wordMatch   = ingWords.some(w => pantryWordSet.has(w));
+    // 2. Full phrase overlap in either direction ("chicken stock" ↔ "chicken")
+    const phraseMatch = pantryPhrases.some(p => ingNorm.includes(p) || p.includes(ingNorm));
+
+    if (wordMatch || phraseMatch) matched++;
   }
   return { matched, total: recipe.ingredients.length };
 }
@@ -124,33 +143,43 @@ export default function Recipes() {
 
         {/* Ingredient input — fridge mode */}
         {mode === "fridge" && (
-          <div
-            className="min-h-[44px] flex flex-wrap items-center gap-1.5 px-3 py-2 rounded-xl border border-input bg-background cursor-text"
-            onClick={() => fridgeRef.current?.focus()}
-          >
-            {pantry.map((p, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-medium px-2 py-0.5 rounded-full"
-              >
-                {p}
-                <button
-                  onClick={e => { e.stopPropagation(); removeIngredient(i); }}
-                  className="hover:text-primary/60"
+          <div className="flex gap-2">
+            <div
+              className="flex-1 min-h-[44px] flex flex-wrap items-center gap-1.5 px-3 py-2 rounded-xl border border-input bg-background cursor-text"
+              onClick={() => fridgeRef.current?.focus()}
+            >
+              {pantry.map((p, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full"
                 >
-                  <X size={11} strokeWidth={2.5} />
-                </button>
-              </span>
-            ))}
-            <input
-              ref={fridgeRef}
-              value={fridgeInput}
-              onChange={e => setFridgeInput(e.target.value)}
-              onKeyDown={handleFridgeKey}
-              onBlur={() => addIngredient(fridgeInput)}
-              placeholder={pantry.length ? "Add another…" : "Type an ingredient and press Enter…"}
-              className="flex-1 min-w-[140px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
+                  {p}
+                  <button
+                    onClick={e => { e.stopPropagation(); removeIngredient(i); }}
+                    className="hover:text-primary/60 ml-0.5"
+                  >
+                    <X size={11} strokeWidth={2.5} />
+                  </button>
+                </span>
+              ))}
+              <input
+                ref={fridgeRef}
+                value={fridgeInput}
+                onChange={e => setFridgeInput(e.target.value)}
+                onKeyDown={handleFridgeKey}
+                placeholder={pantry.length ? "Add another…" : "e.g. chicken, garlic…"}
+                className="flex-1 min-w-[120px] bg-transparent text-sm outline-none placeholder:text-muted-foreground py-0.5"
+              />
+            </div>
+            {/* Tap-to-add button — reliable on mobile */}
+            <button
+              type="button"
+              onClick={() => addIngredient(fridgeInput)}
+              disabled={!fridgeInput.trim()}
+              className="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity self-start mt-0"
+            >
+              <Plus size={20} strokeWidth={2.5} />
+            </button>
           </div>
         )}
 
