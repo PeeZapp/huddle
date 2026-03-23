@@ -2,8 +2,9 @@ import { useState, useRef } from "react";
 import { Link } from "wouter";
 import { Search, Download, Refrigerator, X, Plus } from "lucide-react";
 import { Input, Button } from "@/components/ui";
-import { useRecipeStore } from "@/stores/huddle-stores";
+import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
 import { Recipe } from "@/lib/types";
+import { estimateRecipeCost, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
 
 // ─── Ingredient matching ──────────────────────────────────────────────────────
 
@@ -47,6 +48,8 @@ type Mode = "search" | "fridge";
 
 export default function Recipes() {
   const { recipes } = useRecipeStore();
+  const { familyGroup } = useFamilyStore();
+  const currency = getCurrencyConfig(familyGroup?.country);
 
   const [mode, setMode] = useState<Mode>("search");
   const [search, setSearch] = useState("");
@@ -270,6 +273,22 @@ export default function Recipes() {
                           <span className="text-[10px] text-muted-foreground">{recipe.calories} kcal</span>
                         )}
                       </div>
+
+                      {/* Cost estimate */}
+                      {(() => {
+                        const cost = estimateRecipeCost(recipe, recipe.servings ?? 4);
+                        if (!cost) return null;
+                        return (
+                          <div className="mt-2 flex items-center gap-1.5">
+                            <span className="text-[10px] font-semibold text-primary">
+                              {formatCost(cost.perServeUSD, currency)}/serve
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              · {formatCost(cost.totalUSD, currency)} total
+                            </span>
+                          </div>
+                        );
+                      })()}
 
                       {/* Match badge — fridge mode only */}
                       {score && score.matched > 0 && (

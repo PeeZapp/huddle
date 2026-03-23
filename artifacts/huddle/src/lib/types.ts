@@ -34,6 +34,7 @@ export interface Recipe {
   photo_color?: string;
   cuisine?: string;
   cook_time?: number;
+  servings?: number;
   protein?: number;
   calories?: number;
   carbs?: number;
