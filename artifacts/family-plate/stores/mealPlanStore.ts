@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getItem, setItem, STORAGE_KEYS } from "@/lib/storage";
+import { fsGet, fsSet } from "@/lib/firestoreSync";
 import { generateId } from "@/lib/idgen";
 import type { MealPlan, MealSlotData } from "@/lib/types";
 import type { Day, MealSlotKey } from "@/lib/mealSlots";
@@ -15,8 +16,17 @@ interface MealPlanState {
   clearWeek: (weekStart: string, familyCode: string) => Promise<void>;
 }
 
+function storageKey(familyCode: string) {
+  return `${STORAGE_KEYS.MEAL_PLAN}:${familyCode}`;
+}
+
+function fsDocId(familyCode: string) {
+  return familyCode;
+}
+
 async function persist(plans: Record<string, MealPlan>, familyCode: string) {
-  await setItem(`${STORAGE_KEYS.MEAL_PLAN}:${familyCode}`, plans);
+  await setItem(storageKey(familyCode), plans);
+  fsSet("meal-plans", fsDocId(familyCode), { plans, updated_at: new Date().toISOString() });
 }
 
 function makePlan(weekStart: string, familyCode: string): MealPlan {
@@ -36,8 +46,13 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
   loaded: false,
 
   load: async (familyCode: string) => {
-    const plans = (await getItem<Record<string, MealPlan>>(`${STORAGE_KEYS.MEAL_PLAN}:${familyCode}`)) ?? {};
-    set({ plans, loaded: true });
+    const cached = (await getItem<Record<string, MealPlan>>(storageKey(familyCode))) ?? {};
+    set({ plans: cached, loaded: true });
+    const remote = await fsGet<{ plans: Record<string, MealPlan> }>("meal-plans", fsDocId(familyCode));
+    if (remote?.plans) {
+      set({ plans: remote.plans });
+      await setItem(storageKey(familyCode), remote.plans);
+    }
   },
 
   getPlan: (weekStart, familyCode) => {

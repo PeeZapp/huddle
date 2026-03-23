@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getItem, setItem, STORAGE_KEYS } from "@/lib/storage";
+import { fsGet, fsSet } from "@/lib/firestoreSync";
 import { generateId } from "@/lib/idgen";
 import type { Recipe } from "@/lib/types";
 
@@ -12,8 +13,13 @@ interface RecipeState {
   remove: (id: string) => Promise<void>;
 }
 
+function storageKey(familyCode: string) {
+  return `${STORAGE_KEYS.RECIPES}:${familyCode}`;
+}
+
 async function persist(recipes: Recipe[], familyCode: string) {
-  await setItem(`${STORAGE_KEYS.RECIPES}:${familyCode}`, recipes);
+  await setItem(storageKey(familyCode), recipes);
+  fsSet("recipes", familyCode, { recipes, updated_at: new Date().toISOString() });
 }
 
 export const useRecipeStore = create<RecipeState>((set, get) => ({
@@ -21,8 +27,13 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
   loaded: false,
 
   load: async (familyCode: string) => {
-    const recipes = (await getItem<Recipe[]>(`${STORAGE_KEYS.RECIPES}:${familyCode}`)) ?? [];
-    set({ recipes, loaded: true });
+    const cached = (await getItem<Recipe[]>(storageKey(familyCode))) ?? [];
+    set({ recipes: cached, loaded: true });
+    const remote = await fsGet<{ recipes: Recipe[] }>("recipes", familyCode);
+    if (remote?.recipes) {
+      set({ recipes: remote.recipes });
+      await setItem(storageKey(familyCode), remote.recipes);
+    }
   },
 
   create: async (data) => {

@@ -1,3 +1,11 @@
 const { getDefaultConfig } = require("expo/metro-config");
 
-module.exports = getDefaultConfig(__dirname);
+const config = getDefaultConfig(__dirname);
+
+config.resolver.blockList = [
+  /node_modules\/@firebase\/.*_tmp_\d+\/.*/,
+  /node_modules\/\.pnpm\/@firebase\+.*_tmp_\d+\/.*/,
+];
+
+module.exports = config;
+

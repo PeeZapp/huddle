@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getItem, setItem, STORAGE_KEYS } from "@/lib/storage";
+import { fsGet, fsSet } from "@/lib/firestoreSync";
 import { generateId } from "@/lib/idgen";
 import type { ShoppingItem } from "@/lib/types";
 
@@ -14,8 +15,13 @@ interface ShoppingState {
   clearWeek: (weekStart: string) => Promise<void>;
 }
 
+function storageKey(familyCode: string) {
+  return `${STORAGE_KEYS.SHOPPING}:${familyCode}`;
+}
+
 async function persist(items: ShoppingItem[], familyCode: string) {
-  await setItem(`${STORAGE_KEYS.SHOPPING}:${familyCode}`, items);
+  await setItem(storageKey(familyCode), items);
+  fsSet("shopping", familyCode, { items, updated_at: new Date().toISOString() });
 }
 
 export const useShoppingStore = create<ShoppingState>((set, get) => ({
@@ -23,8 +29,13 @@ export const useShoppingStore = create<ShoppingState>((set, get) => ({
   loaded: false,
 
   load: async (familyCode: string) => {
-    const items = (await getItem<ShoppingItem[]>(`${STORAGE_KEYS.SHOPPING}:${familyCode}`)) ?? [];
-    set({ items, loaded: true });
+    const cached = (await getItem<ShoppingItem[]>(storageKey(familyCode))) ?? [];
+    set({ items: cached, loaded: true });
+    const remote = await fsGet<{ items: ShoppingItem[] }>("shopping", familyCode);
+    if (remote?.items) {
+      set({ items: remote.items });
+      await setItem(storageKey(familyCode), remote.items);
+    }
   },
 
   create: async (data) => {
