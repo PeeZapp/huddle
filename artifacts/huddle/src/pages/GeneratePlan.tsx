@@ -1,145 +1,263 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
-import { Sparkles, ArrowLeft, Check, RefreshCw } from "lucide-react";
+import { ArrowLeft, Check, RefreshCw, Sparkles, Info } from "lucide-react";
 import { Button, Card, Badge } from "@/components/ui";
-import { useFamilyStore, useMealPlanStore, useNutritionStore } from "@/stores/huddle-stores";
-import { useAiMutation } from "@/hooks/use-ai";
+import { useFamilyStore, useMealPlanStore, useNutritionStore, useRecipeStore } from "@/stores/huddle-stores";
 import { getWeekStart } from "@/lib/utils";
-import { DAYS, Day, MealSlotKey, MEAL_SLOTS } from "@/lib/types";
+import { MEAL_SLOTS, MealSlotKey } from "@/lib/types";
+import { generateMealPlan, recipesForSlot, SLOT_ASSUMED, GeneratedSlot } from "@/lib/generate-plan";
+
+const DAY_SHORT: Record<string, string> = {
+  monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu",
+  friday: "Fri", saturday: "Sat", sunday: "Sun",
+};
 
 export default function GeneratePlan() {
-  const [, setLocation] = useLocation();
-  const { familyGroup } = useFamilyStore();
-  const { getPlan, setSlot } = useMealPlanStore();
-  const { goals } = useNutritionStore();
-  const aiMutation = useAiMutation();
-  
+  const [, setLocation]       = useLocation();
+  const { familyGroup }       = useFamilyStore();
+  const { getPlan, setSlot }  = useMealPlanStore();
+  const { goals }             = useNutritionStore();
+  const { recipes }           = useRecipeStore();
+
   const weekStart = getWeekStart();
-  const plan = getPlan(weekStart, familyGroup?.code || "");
-  
-  const [generatedItems, setGeneratedItems] = useState<any[]>([]);
+  const plan      = getPlan(weekStart, familyGroup?.code || "");
+
+  // ── Slot selection state ─────────────────────────────────────────────────
+  const [selectedSlots, setSelectedSlots] = useState<Set<MealSlotKey>>(
+    () => new Set(plan.active_slots as MealSlotKey[]),
+  );
+
+  function toggleSlot(slot: MealSlotKey) {
+    setSelectedSlots(prev => {
+      const next = new Set(prev);
+      next.has(slot) ? next.delete(slot) : next.add(slot);
+      return next;
+    });
+  }
+
+  // Recipe count per slot (so user knows what's available)
+  const recipeCountPerSlot = useMemo(() =>
+    Object.fromEntries(
+      MEAL_SLOTS.map(({ key }) => [key, recipesForSlot(recipes, key).length]),
+    ), [recipes]);
+
+  // ── Generation state ─────────────────────────────────────────────────────
+  const [results, setResults]  = useState<GeneratedSlot[]>([]);
   const [isPreview, setIsPreview] = useState(false);
 
-  // Calculate empty slots
-  const emptySlots: { day: Day, slot: MealSlotKey }[] = [];
-  DAYS.forEach(day => {
-    plan.active_slots.forEach(slot => {
-      if (!plan.slots[`${day}_${slot}`]) {
-        emptySlots.push({ day, slot });
-      }
-    });
-  });
+  const existingKeys = useMemo(
+    () => new Set(Object.keys(plan.slots)),
+    [plan.slots],
+  );
 
-  const handleGenerate = async () => {
-    if (emptySlots.length === 0) return;
-    
-    const prompt = `Generate a varied weekly meal plan for these empty slots:
-    ${emptySlots.map(s => `- ${s.day} ${s.slot}`).join('\n')}
-    Target nutrition per day: ${goals.calories} cal.
-    Return JSON array of objects with: day, slot, use_existing(bool), recipe(name, emoji, cook_time, calories, protein, cuisine, vegetarian)`;
+  function handleGenerate() {
+    const slots = [...selectedSlots];
+    const generated = generateMealPlan(slots, existingKeys, recipes, goals);
+    setResults(generated);
+    setIsPreview(true);
+  }
 
-    try {
-      const res = await aiMutation.mutateAsync({ prompt, responseFormat: "json" });
-      const parsed = JSON.parse(res.result);
-      setGeneratedItems(parsed);
-      setIsPreview(true);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleApply = () => {
-    generatedItems.forEach(item => {
-      setSlot(weekStart, familyGroup!.code, item.day, item.slot, {
-        recipe_name: item.recipe.name,
-        emoji: item.recipe.emoji,
-        calories: item.recipe.calories,
-        protein: item.recipe.protein,
-        cook_time: item.recipe.cook_time
+  function handleApply() {
+    results.forEach(({ day, slot, recipe }) => {
+      setSlot(weekStart, familyGroup!.code, day, slot, {
+        recipe_id:   recipe.id,
+        recipe_name: recipe.name,
+        emoji:       recipe.emoji,
+        calories:    recipe.calories,
+        protein:     recipe.protein,
+        carbs:       recipe.carbs,
+        fat:         recipe.fat,
+        cook_time:   recipe.cook_time,
       });
     });
     setLocation("/");
-  };
+  }
+
+  // Nutrition summary of the generated preview
+  const previewTotals = useMemo(() => {
+    const DAYS_COUNT = 7;
+    const totalCal = results.reduce((s, r) => s + (r.recipe.calories ?? 0), 0);
+    const totalProt = results.reduce((s, r) => s + (r.recipe.protein ?? 0), 0);
+    return {
+      avgCal:  Math.round(totalCal  / DAYS_COUNT),
+      avgProt: Math.round(totalProt / DAYS_COUNT),
+    };
+  }, [results]);
+
+  // ── Selected slot nutrition context ─────────────────────────────────────
+  const unselectedAssumedCal = MEAL_SLOTS
+    .filter(({ key }) => !selectedSlots.has(key))
+    .reduce((sum, { key }) => sum + SLOT_ASSUMED[key as MealSlotKey].calories, 0);
+
+  const remainingBudget = Math.max(goals.calories - unselectedAssumedCal, 0);
 
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col">
       <header className="p-6 bg-white border-b border-border flex items-center gap-4 sticky top-0 z-20">
-        <button onClick={() => setLocation("/")} className="p-2 -ml-2 rounded-full hover:bg-secondary">
+        <button
+          onClick={() => isPreview ? setIsPreview(false) : setLocation("/")}
+          className="p-2 -ml-2 rounded-full hover:bg-secondary"
+        >
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-2xl font-display font-bold">Auto-Fill Plan</h1>
       </header>
 
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 p-6 overflow-y-auto pb-32">
         {!isPreview ? (
           <div className="space-y-6">
-            <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20 text-center py-10">
+
+            {/* Hero card */}
+            <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20 text-center py-8">
               <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
                 <Sparkles size={32} />
               </div>
-              <h2 className="text-xl font-bold mb-2">Magic Meal Planning</h2>
-              <p className="text-muted-foreground text-sm max-w-[250px] mx-auto">
-                Our AI will analyze your nutrition goals and instantly fill the {emptySlots.length} empty slots in your current week.
+              <h2 className="text-xl font-bold mb-1">Smart Meal Planning</h2>
+              <p className="text-muted-foreground text-sm max-w-[260px] mx-auto">
+                Pick which meals to fill. The planner will match your nutrition goals as closely as possible.
               </p>
             </Card>
 
-            <div className="bg-white p-5 rounded-2xl border border-border">
-              <h3 className="font-semibold mb-4">Current Targets</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-secondary/50 p-3 rounded-xl">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider block">Calories</span>
-                  <span className="text-lg font-bold">{goals.calories}</span>
+            {/* Slot selector */}
+            <div>
+              <h3 className="font-semibold mb-3">Which slots should I fill?</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {MEAL_SLOTS.map(({ key, label }) => {
+                  const active  = selectedSlots.has(key);
+                  const count   = recipeCountPerSlot[key] ?? 0;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => toggleSlot(key)}
+                      className={`relative flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
+                        active
+                          ? "bg-primary/10 border-primary/40 ring-1 ring-primary/30"
+                          : "bg-white border-border hover:border-primary/20"
+                      }`}
+                    >
+                      {active && (
+                        <span className="absolute top-2 right-2 w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center">
+                          <Check size={11} />
+                        </span>
+                      )}
+                      <span className={`text-sm font-bold ${active ? "text-primary" : ""}`}>
+                        {label}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground mt-0.5">
+                        {count} recipe{count !== 1 ? "s" : ""}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Nutrition context */}
+            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <Info size={15} className="text-primary mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {selectedSlots.size === 7
+                    ? "The plan will cover your full daily target of "
+                    : "For meals not in the plan, the app assumes a typical intake. Your planned slots will target "}
+                  <span className="font-bold text-foreground">
+                    {selectedSlots.size === 7
+                      ? `${goals.calories.toLocaleString()} kcal.`
+                      : `~${remainingBudget.toLocaleString()} kcal.`}
+                  </span>
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-white rounded-xl p-3 text-center">
+                  <span className="text-xs text-muted-foreground block">Daily goal</span>
+                  <span className="font-bold text-foreground">{goals.calories.toLocaleString()} kcal</span>
                 </div>
-                <div className="bg-secondary/50 p-3 rounded-xl">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider block">Protein</span>
-                  <span className="text-lg font-bold">{goals.protein}g</span>
+                <div className="bg-white rounded-xl p-3 text-center">
+                  <span className="text-xs text-muted-foreground block">Slots selected</span>
+                  <span className="font-bold text-foreground">
+                    {selectedSlots.size} / {MEAL_SLOTS.length}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <Button 
-              className="w-full mt-4" 
-              size="lg" 
-              onClick={handleGenerate} 
-              isLoading={aiMutation.isPending}
-              disabled={emptySlots.length === 0}
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleGenerate}
+              disabled={selectedSlots.size === 0}
             >
-              {emptySlots.length === 0 ? "Week is Full" : `Fill ${emptySlots.length} Slots`}
+              <Sparkles size={16} className="mr-2" />
+              Fill {selectedSlots.size > 0 ? `${selectedSlots.size * 7} slots` : "Plan"}
             </Button>
           </div>
+
         ) : (
-          <div className="space-y-6 pb-24">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl font-bold">Preview Plan</h2>
-              <Badge variant="success">{generatedItems.length} meals found</Badge>
-            </div>
-            
-            <div className="space-y-3">
-              {generatedItems.map((item, idx) => (
-                <div key={idx} className="bg-white p-4 rounded-xl border border-border flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-2xl shrink-0">
-                    {item.recipe.emoji}
-                  </div>
-                  <div>
-                    <div className="flex gap-2 items-center mb-1">
-                      <span className="text-[10px] font-bold uppercase text-primary tracking-wider">{item.day}</span>
-                      <span className="text-[10px] text-muted-foreground">• {item.slot}</span>
-                    </div>
-                    <h4 className="font-semibold text-foreground">{item.recipe.name}</h4>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {item.recipe.calories} cal • {item.recipe.protein}g protein • {item.recipe.cook_time}m
-                    </p>
-                  </div>
-                </div>
-              ))}
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">Preview</h2>
+              <Badge variant="success">{results.length} meals</Badge>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-border flex gap-3 max-w-md mx-auto pb-safe">
-              <Button variant="outline" className="flex-1" onClick={handleGenerate} isLoading={aiMutation.isPending}>
-                <RefreshCw className="w-4 h-4 mr-2" /> Redo
+            {/* Nutrition summary */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-white border border-border rounded-2xl p-3 text-center">
+                <span className="text-xs text-muted-foreground block">Avg planned cal/day</span>
+                <span className="font-bold text-foreground tabular-nums">
+                  {previewTotals.avgCal.toLocaleString()} kcal
+                </span>
+              </div>
+              <div className="bg-white border border-border rounded-2xl p-3 text-center">
+                <span className="text-xs text-muted-foreground block">Avg planned protein/day</span>
+                <span className="font-bold text-foreground tabular-nums">
+                  {previewTotals.avgProt}g
+                </span>
+              </div>
+            </div>
+
+            {/* Results grouped by day */}
+            {(["monday","tuesday","wednesday","thursday","friday","saturday","sunday"] as const).map(day => {
+              const dayResults = results.filter(r => r.day === day);
+              if (dayResults.length === 0) return null;
+              return (
+                <div key={day}>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                    {DAY_SHORT[day]}
+                  </h3>
+                  <div className="space-y-2">
+                    {dayResults.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-white p-3 rounded-xl border border-border flex items-center gap-3"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl shrink-0">
+                          {item.recipe.emoji ?? "🍽️"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-[10px] font-bold uppercase text-primary tracking-wider">
+                              {MEAL_SLOTS.find(s => s.key === item.slot)?.label}
+                            </span>
+                          </div>
+                          <p className="font-semibold text-sm truncate">{item.recipe.name}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {item.recipe.calories ?? "—"} kcal · {item.recipe.protein ?? "—"}g protein
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Sticky footer */}
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-border flex gap-3 max-w-md mx-auto">
+              <Button variant="outline" className="flex-1" onClick={handleGenerate}>
+                <RefreshCw size={15} className="mr-2" /> Redo
               </Button>
               <Button className="flex-1" onClick={handleApply}>
-                <Check className="w-4 h-4 mr-2" /> Apply
+                <Check size={15} className="mr-2" /> Apply
               </Button>
             </div>
           </div>
