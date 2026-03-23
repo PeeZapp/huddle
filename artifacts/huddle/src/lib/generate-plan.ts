@@ -1,9 +1,18 @@
 import { DAYS, Day, MealSlotKey, NutritionGoals, Recipe } from "./types";
 
-// ----- Assumed nutrition for slots NOT in the plan -----
-// Used to estimate what the user has already eaten so we can
-// budget the remaining calories/protein toward the planned slots.
+// ── Core meals — the only slots assumed when NOT selected ─────────────────────
+// Snacks and dessert are purely optional: no calories assumed if not in the plan.
 
+export const CORE_SLOTS: MealSlotKey[] = ["breakfast", "lunch", "dinner"];
+
+export const OPTIONAL_SLOTS: MealSlotKey[] = [
+  "morning_snack",
+  "afternoon_snack",
+  "night_snack",
+  "dessert",
+];
+
+// Typical nutrition for each slot (used for proportional budgeting)
 export const SLOT_ASSUMED: Record<MealSlotKey, { calories: number; protein: number }> = {
   breakfast:       { calories: 380, protein: 20 },
   morning_snack:   { calories: 140, protein:  7 },
@@ -28,7 +37,7 @@ export const ALL_MEAL_SLOTS: MealSlotKey[] = [
 function recipeMatchesSlot(recipe: Recipe, slot: MealSlotKey): boolean {
   const rs = recipe.meal_slots ?? [];
   if (rs.includes(slot)) return true;
-  // Any "snack" slot can use morning_snack/afternoon_snack/night_snack tagged recipes
+  // Any snack slot accepts any other snack-tagged recipe
   const isSnackSlot = slot === "morning_snack" || slot === "afternoon_snack" || slot === "night_snack";
   if (isSnackSlot && (rs.includes("morning_snack") || rs.includes("afternoon_snack") || rs.includes("night_snack"))) {
     return true;
@@ -39,25 +48,31 @@ function recipeMatchesSlot(recipe: Recipe, slot: MealSlotKey): boolean {
 // Return recipes that can fill a slot (falls back to the full library if nothing matches)
 export function recipesForSlot(recipes: Recipe[], slot: MealSlotKey): Recipe[] {
   const matched = recipes.filter(r => recipeMatchesSlot(r, slot));
-  return matched.length > 0 ? matched : recipes; // graceful fallback
+  return matched.length > 0 ? matched : recipes;
 }
 
-// Calculate the calorie/protein target for one slot, given which slots the plan fills
+// Calculate calorie/protein target for one slot.
+//
+// Rule:
+//   - Only unselected CORE slots (breakfast/lunch/dinner) count as "assumed eaten"
+//   - Unselected optional slots (snacks, dessert) are NOT assumed — the user just
+//     isn't having them, so no calories are subtracted from the budget for them
+//   - The remaining budget is distributed across all selected slots proportionally
 function slotTarget(
   slot: MealSlotKey,
   selectedSlots: MealSlotKey[],
   goals: NutritionGoals,
 ): { calories: number; protein: number } {
-  // Sum assumed nutrition for slots the user fills themselves (not in the plan)
-  const unselected = ALL_MEAL_SLOTS.filter(s => !selectedSlots.includes(s));
-  const assumedCal  = unselected.reduce((sum, s) => sum + SLOT_ASSUMED[s].calories, 0);
-  const assumedProt = unselected.reduce((sum, s) => sum + SLOT_ASSUMED[s].protein,  0);
+  // Only unselected CORE meals are assumed
+  const unselectedCore = CORE_SLOTS.filter(s => !selectedSlots.includes(s));
+  const assumedCal  = unselectedCore.reduce((sum, s) => sum + SLOT_ASSUMED[s].calories, 0);
+  const assumedProt = unselectedCore.reduce((sum, s) => sum + SLOT_ASSUMED[s].protein,  0);
 
-  // Remaining budget for everything the plan covers
-  const budgetCal  = Math.max(goals.calories - assumedCal,   80);
+  // Remaining budget for every slot the plan covers (core + optional if selected)
+  const budgetCal  = Math.max(goals.calories - assumedCal,  80);
   const budgetProt = Math.max(goals.protein  - assumedProt,  5);
 
-  // This slot's proportion of the selected slots' assumed totals
+  // This slot's share of the budget, weighted by its typical calorie contribution
   const totalSelectedCal  = selectedSlots.reduce((sum, s) => sum + SLOT_ASSUMED[s].calories, 0);
   const totalSelectedProt = selectedSlots.reduce((sum, s) => sum + SLOT_ASSUMED[s].protein,  0);
 
@@ -96,17 +111,15 @@ export function generateMealPlan(
   for (const day of DAYS) {
     for (const slot of selectedSlots) {
       const key = `${day}_${slot}`;
-      if (existingSlotKeys.has(key)) continue; // already filled — skip
+      if (existingSlotKeys.has(key)) continue;
 
       const target = slotTarget(slot, selectedSlots, goals);
       const pool   = recipesForSlot(recipes, slot);
 
-      // Prefer recipes not yet used this week in this slot
-      const used   = usedPerSlot.get(slot)!;
-      const unused = pool.filter(r => !used.has(r.id));
+      const used       = usedPerSlot.get(slot)!;
+      const unused     = pool.filter(r => !used.has(r.id));
       const candidates = unused.length > 0 ? unused : pool;
 
-      // Score: lower = better match to calorie + protein targets
       const scored = candidates.map(r => {
         const calDiff  = Math.abs((r.calories ?? target.calories) - target.calories);
         const protDiff = Math.abs((r.protein  ?? target.protein)  - target.protein);
@@ -114,7 +127,6 @@ export function generateMealPlan(
       });
       scored.sort((a, b) => a.score - b.score);
 
-      // Pick randomly from top-3 to add variety on re-runs
       const topN   = Math.min(3, scored.length);
       const picked = scored[Math.floor(Math.random() * topN)].recipe;
 

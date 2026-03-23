@@ -5,7 +5,7 @@ import { Button, Card, Badge } from "@/components/ui";
 import { useFamilyStore, useMealPlanStore, useNutritionStore, useRecipeStore } from "@/stores/huddle-stores";
 import { getWeekStart } from "@/lib/utils";
 import { MEAL_SLOTS, MealSlotKey } from "@/lib/types";
-import { generateMealPlan, recipesForSlot, SLOT_ASSUMED, GeneratedSlot } from "@/lib/generate-plan";
+import { generateMealPlan, recipesForSlot, SLOT_ASSUMED, CORE_SLOTS, OPTIONAL_SLOTS, GeneratedSlot } from "@/lib/generate-plan";
 import { filterRecipesForFamily, familyRestrictions } from "@/lib/dietary";
 
 const DAY_SHORT: Record<string, string> = {
@@ -16,7 +16,7 @@ const DAY_SHORT: Record<string, string> = {
 export default function GeneratePlan() {
   const [, setLocation]       = useLocation();
   const { familyGroup }       = useFamilyStore();
-  const { getPlan, setSlot }  = useMealPlanStore();
+  const { getPlan, setSlot, setActiveSlots } = useMealPlanStore();
   const { goals }             = useNutritionStore();
   const { recipes }           = useRecipeStore();
 
@@ -71,6 +71,9 @@ export default function GeneratePlan() {
   }
 
   function handleApply() {
+    const slots = [...selectedSlots];
+    // Persist which slots are active so Plan.tsx renders them all
+    setActiveSlots(weekStart, familyGroup!.code, slots);
     results.forEach(({ day, slot, recipe }) => {
       setSlot(weekStart, familyGroup!.code, day, slot, {
         recipe_id:   recipe.id,
@@ -98,9 +101,11 @@ export default function GeneratePlan() {
   }, [results]);
 
   // ── Selected slot nutrition context ─────────────────────────────────────
-  const unselectedAssumedCal = MEAL_SLOTS
-    .filter(({ key }) => !selectedSlots.has(key))
-    .reduce((sum, { key }) => sum + SLOT_ASSUMED[key as MealSlotKey].calories, 0);
+  // Only CORE unselected slots (breakfast/lunch/dinner) are assumed.
+  // Snacks and dessert are optional — no calories assumed when not selected.
+  const unselectedAssumedCal = CORE_SLOTS
+    .filter(key => !selectedSlots.has(key))
+    .reduce((sum, key) => sum + SLOT_ASSUMED[key].calories, 0);
 
   const remainingBudget = Math.max(goals.calories - unselectedAssumedCal, 0);
 
@@ -153,36 +158,66 @@ export default function GeneratePlan() {
             )}
 
             {/* Slot selector */}
-            <div>
-              <h3 className="font-semibold mb-3">Which slots should I fill?</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {MEAL_SLOTS.map(({ key, label }) => {
-                  const active  = selectedSlots.has(key);
-                  const count   = recipeCountPerSlot[key] ?? 0;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => toggleSlot(key)}
-                      className={`relative flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
-                        active
-                          ? "bg-primary/10 border-primary/40 ring-1 ring-primary/30"
-                          : "bg-white border-border hover:border-primary/20"
-                      }`}
-                    >
-                      {active && (
-                        <span className="absolute top-2 right-2 w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center">
-                          <Check size={11} />
-                        </span>
-                      )}
-                      <span className={`text-sm font-bold ${active ? "text-primary" : ""}`}>
-                        {label}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground mt-0.5">
-                        {count} recipe{count !== 1 ? "s" : ""}
-                      </span>
-                    </button>
-                  );
-                })}
+            <div className="space-y-4">
+              {/* Core meals */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Core meals</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {MEAL_SLOTS.filter(({ key }) => !OPTIONAL_SLOTS.includes(key)).map(({ key, label }) => {
+                    const active = selectedSlots.has(key);
+                    const count  = recipeCountPerSlot[key] ?? 0;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => toggleSlot(key)}
+                        className={`relative flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
+                          active
+                            ? "bg-primary/10 border-primary/40 ring-1 ring-primary/30"
+                            : "bg-white border-border hover:border-primary/20"
+                        }`}
+                      >
+                        {active && (
+                          <span className="absolute top-2 right-2 w-4 h-4 bg-primary text-white rounded-full flex items-center justify-center">
+                            <Check size={9} />
+                          </span>
+                        )}
+                        <span className={`text-sm font-bold ${active ? "text-primary" : ""}`}>{label}</span>
+                        <span className="text-[10px] text-muted-foreground mt-0.5">{count} recipe{count !== 1 ? "s" : ""}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Optional extras */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Optional extras</p>
+                <p className="text-[11px] text-muted-foreground mb-2">Snacks and dessert are never assumed in your calorie budget — only add them if you want them planned.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {MEAL_SLOTS.filter(({ key }) => OPTIONAL_SLOTS.includes(key)).map(({ key, label }) => {
+                    const active = selectedSlots.has(key);
+                    const count  = recipeCountPerSlot[key] ?? 0;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => toggleSlot(key)}
+                        className={`relative flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
+                          active
+                            ? "bg-primary/10 border-primary/40 ring-1 ring-primary/30"
+                            : "bg-white border-border hover:border-primary/20"
+                        }`}
+                      >
+                        {active && (
+                          <span className="absolute top-2 right-2 w-4 h-4 bg-primary text-white rounded-full flex items-center justify-center">
+                            <Check size={9} />
+                          </span>
+                        )}
+                        <span className={`text-sm font-bold ${active ? "text-primary" : ""}`}>{label}</span>
+                        <span className="text-[10px] text-muted-foreground mt-0.5">{count} recipe{count !== 1 ? "s" : ""}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -191,14 +226,13 @@ export default function GeneratePlan() {
               <div className="flex items-start gap-2">
                 <Info size={15} className="text-primary mt-0.5 shrink-0" />
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  {selectedSlots.size === 7
-                    ? "The plan will cover your full daily target of "
-                    : "For meals not in the plan, the app assumes a typical intake. Your planned slots will target "}
+                  {CORE_SLOTS.every(s => selectedSlots.has(s))
+                    ? "All core meals selected — the plan will target your full daily goal of "
+                    : "For any core meal (breakfast/lunch/dinner) not in the plan, a typical intake is assumed. Your selected slots will target "}
                   <span className="font-bold text-foreground">
-                    {selectedSlots.size === 7
-                      ? `${goals.calories.toLocaleString()} kcal.`
-                      : `~${remainingBudget.toLocaleString()} kcal.`}
+                    ~{remainingBudget.toLocaleString()} kcal.
                   </span>
+                  {" "}Snacks and dessert are never assumed.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2">
