@@ -47,6 +47,7 @@ export interface Recipe {
   meal_slots?: MealSlotKey[];
   is_component?: boolean;
   excluded_from_auto?: boolean;
+  user_notes?: string;
   imported?: boolean;
   source_url?: string;
   family_code: string;
@@ -89,6 +90,7 @@ export interface FamilyMember {
   id: string;
   name: string;
   type: "adult" | "child" | "toddler" | "baby";
+  dietary?: string[]; // restriction ids from DIETARY_OPTIONS
 }
 
 export interface FamilyGroup {

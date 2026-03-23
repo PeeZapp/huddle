@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Check, RefreshCw, Sparkles, Info } from "lucide-react";
+import { ArrowLeft, Check, RefreshCw, Sparkles, Info, ShieldAlert } from "lucide-react";
 import { Button, Card, Badge } from "@/components/ui";
 import { useFamilyStore, useMealPlanStore, useNutritionStore, useRecipeStore } from "@/stores/huddle-stores";
 import { getWeekStart } from "@/lib/utils";
 import { MEAL_SLOTS, MealSlotKey } from "@/lib/types";
 import { generateMealPlan, recipesForSlot, SLOT_ASSUMED, GeneratedSlot } from "@/lib/generate-plan";
+import { filterRecipesForFamily, familyRestrictions } from "@/lib/dietary";
 
 const DAY_SHORT: Record<string, string> = {
   monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu",
@@ -35,11 +36,23 @@ export default function GeneratePlan() {
     });
   }
 
+  // ── Dietary filtering ────────────────────────────────────────────────────
+  const members = familyGroup?.family_members ?? [];
+  const restrictions = familyRestrictions(members);
+
+  // Filter pool: apply family dietary needs + respect excluded_from_auto
+  const filteredRecipes = useMemo(() => {
+    const safe = filterRecipesForFamily(recipes, members);
+    return safe.filter(r => !r.excluded_from_auto);
+  }, [recipes, members]);
+
+  const filteredOut = recipes.length - filteredRecipes.length;
+
   // Recipe count per slot (so user knows what's available)
   const recipeCountPerSlot = useMemo(() =>
     Object.fromEntries(
-      MEAL_SLOTS.map(({ key }) => [key, recipesForSlot(recipes, key).length]),
-    ), [recipes]);
+      MEAL_SLOTS.map(({ key }) => [key, recipesForSlot(filteredRecipes, key).length]),
+    ), [filteredRecipes]);
 
   // ── Generation state ─────────────────────────────────────────────────────
   const [results, setResults]  = useState<GeneratedSlot[]>([]);
@@ -52,7 +65,7 @@ export default function GeneratePlan() {
 
   function handleGenerate() {
     const slots = [...selectedSlots];
-    const generated = generateMealPlan(slots, existingKeys, recipes, goals);
+    const generated = generateMealPlan(slots, existingKeys, filteredRecipes, goals);
     setResults(generated);
     setIsPreview(true);
   }
@@ -117,6 +130,27 @@ export default function GeneratePlan() {
                 Pick which meals to fill. The planner will match your nutrition goals as closely as possible.
               </p>
             </Card>
+
+            {/* Dietary filter banner */}
+            {(restrictions.length > 0 || filteredOut > 0) && (
+              <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-2xl p-4">
+                <ShieldAlert size={18} className="text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-primary mb-0.5">
+                    Dietary filters active
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {filteredOut > 0
+                      ? `${filteredOut} recipe${filteredOut !== 1 ? "s" : ""} excluded based on your family's dietary needs.`
+                      : "Family dietary needs will be respected when selecting recipes."}
+                    {" "}
+                    {restrictions.length > 0 && (
+                      <span className="font-medium">{restrictions.join(", ")}</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Slot selector */}
             <div>
