@@ -156,16 +156,18 @@ No markdown, no explanation — raw JSON only.`,
 
   return (
     <>
-      {/* Backdrop — also swallows touchmove so the page behind can't scroll */}
+      {/* Backdrop — sits above the bottom nav (z-60) so it covers everything */}
       <div
-        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+        style={{ zIndex: 60 }}
         onClick={onClose}
         onTouchMove={(e) => e.preventDefault()}
       />
 
-      {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-md bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ height: "88dvh" }}
+      {/* Sheet — anchored above the bottom nav bar (4rem = 64px = h-16) */}
+      <div
+        className="fixed left-0 right-0 mx-auto max-w-md bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden"
+        style={{ bottom: "4rem", height: "calc(88dvh - 4rem)", zIndex: 70 }}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
