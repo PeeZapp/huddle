@@ -69,10 +69,17 @@ export default function GeneratePlan() {
   const [results, setResults]     = useState<GeneratedSlot[]>([]);
   const [isPreview, setIsPreview] = useState(false);
 
-  const existingKeys = useMemo(
-    () => new Set(Object.keys(plan.slots)),
-    [plan.slots],
-  );
+  // Only skip slots that already have a meal AND are NOT selected for regeneration.
+  // If the user has selected a slot to fill, always generate a fresh meal for it.
+  const existingKeys = useMemo(() => {
+    const all = new Set(Object.keys(plan.slots));
+    // Remove every "day_slot" key that belongs to a selected slot
+    for (const key of [...all]) {
+      const slotPart = key.split("_").slice(1).join("_") as MealSlotKey;
+      if (selectedSlots.has(slotPart)) all.delete(key);
+    }
+    return all;
+  }, [plan.slots, selectedSlots]);
 
   function handleGenerate() {
     const slots = [...selectedSlots];
