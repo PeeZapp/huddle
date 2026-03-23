@@ -83,11 +83,15 @@ export default function Recipes() {
   };
 
   // ── filtered / scored lists ──
-  const searchFiltered = recipes.filter(r =>
-    r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.cuisine?.toLowerCase().includes(search.toLowerCase()) ||
-    r.ingredients?.some(i => i.name.toLowerCase().includes(search.toLowerCase()))
-  );
+  const searchFiltered = recipes.filter(r => {
+    const cuisine = Array.isArray(r.cuisine) ? r.cuisine[0] : r.cuisine;
+    const q = search.toLowerCase();
+    return (
+      r.name.toLowerCase().includes(q) ||
+      (typeof cuisine === "string" && cuisine.toLowerCase().includes(q)) ||
+      r.ingredients?.some(i => i.name.toLowerCase().includes(q))
+    );
+  });
 
   const fridgeScored = pantry.length
     ? recipes

@@ -67,6 +67,59 @@ ${RECIPE_JSON_SCHEMA}`;
   return result as Record<string, unknown>;
 }
 
+// ── Normalise AI output so every field has the correct JS type ────────────────
+// Claude sometimes returns strings as 1-element arrays, numbers as strings, etc.
+
+function toStr(v: unknown): string | undefined {
+  if (v == null) return undefined;
+  if (Array.isArray(v)) return v[0] ? String(v[0]) : undefined;
+  return String(v);
+}
+
+function toNum(v: unknown): number | undefined {
+  if (v == null) return undefined;
+  const n = Number(v);
+  return isNaN(n) ? undefined : Math.round(n);
+}
+
+function toBool(v: unknown): boolean {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") return v.toLowerCase() === "true";
+  return Boolean(v);
+}
+
+function normalizeImported(raw: Record<string, unknown>): Record<string, unknown> {
+  // Ingredients: ensure each item is {name, amount, category} with string values
+  const ingredients = (Array.isArray(raw.ingredients) ? raw.ingredients : []).map((ing: unknown) => {
+    const i = (typeof ing === "object" && ing !== null ? ing : { name: String(ing) }) as Record<string, unknown>;
+    return { name: toStr(i.name) ?? "", amount: toStr(i.amount) ?? "", category: toStr(i.category) ?? "other" };
+  });
+
+  // Method: ensure array of strings
+  const method = (Array.isArray(raw.method) ? raw.method : []).map((s: unknown) => String(s));
+
+  // meal_slots: ensure array of strings
+  const meal_slots = Array.isArray(raw.meal_slots) ? raw.meal_slots.map(String) : ["dinner"];
+
+  return {
+    name:        toStr(raw.name)        ?? "Imported Recipe",
+    emoji:       toStr(raw.emoji)       ?? "🍽",
+    photo_color: toStr(raw.photo_color) ?? "#639922",
+    cuisine:     toStr(raw.cuisine),
+    cook_time:   toNum(raw.cook_time),
+    servings:    toNum(raw.servings),
+    calories:    toNum(raw.calories),
+    protein:     toNum(raw.protein),
+    carbs:       toNum(raw.carbs),
+    fat:         toNum(raw.fat),
+    vegetarian:  toBool(raw.vegetarian),
+    chef_tip:    toStr(raw.chef_tip),
+    ingredients,
+    method,
+    meal_slots,
+  };
+}
+
 // ── Status indicator ──────────────────────────────────────────────────────────
 
 type Phase = "idle" | "fetching" | "extracting" | "done" | "error";
@@ -115,7 +168,7 @@ export default function ImportRecipe() {
       try {
         const parsed = await extractRecipeWithAi(text.trim());
         const recipe = addRecipe({
-          ...parsed,
+          ...normalizeImported(parsed),
           family_code: familyGroup!.code,
           imported: true,
         });
@@ -176,7 +229,7 @@ export default function ImportRecipe() {
       }
 
       const recipe = addRecipe({
-        ...parsed,
+        ...normalizeImported(parsed),
         family_code: familyGroup!.code,
         imported: true,
         source_url: url.trim(),
