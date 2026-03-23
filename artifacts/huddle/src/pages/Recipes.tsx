@@ -6,6 +6,18 @@ import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
 import { Recipe } from "@/lib/types";
 import { estimateRecipeCost, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
 
+// ─── Slot label abbreviations (for compact card chips) ────────────────────────
+
+const SLOT_SHORT: Record<string, string> = {
+  breakfast:       "Breakfast",
+  lunch:           "Lunch",
+  dinner:          "Dinner",
+  morning_snack:   "AM Snack",
+  afternoon_snack: "PM Snack",
+  night_snack:     "Night",
+  dessert:         "Dessert",
+};
+
 // ─── Ingredient matching ──────────────────────────────────────────────────────
 
 function normalize(s: string) {
@@ -281,7 +293,18 @@ export default function Recipes() {
                     </div>
 
                     <div className="p-3 flex flex-col flex-1">
-                      <h3 className="font-semibold text-sm leading-tight line-clamp-2 flex-1">{recipe.name}</h3>
+                      <h3 className="font-semibold text-sm leading-tight line-clamp-2">{recipe.name}</h3>
+
+                      {/* Meal slot chips */}
+                      {recipe.meal_slots && recipe.meal_slots.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {recipe.meal_slots.map(slot => (
+                            <span key={slot} className="text-[9px] font-bold uppercase tracking-wide bg-secondary text-muted-foreground px-1.5 py-0.5 rounded-full">
+                              {SLOT_SHORT[slot] ?? slot}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       <div className="mt-2 flex items-center gap-2 flex-wrap">
                         {recipe.cook_time && (

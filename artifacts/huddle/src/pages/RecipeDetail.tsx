@@ -3,7 +3,7 @@ import { useLocation, useParams } from "wouter";
 import {
   ArrowLeft, Clock, Flame, Globe, Leaf, Trash2,
   DollarSign, Users, FileText, ToggleLeft, ToggleRight, Check,
-  Layers, ExternalLink,
+  Layers, ExternalLink, Utensils, Link as LinkIcon,
 } from "lucide-react";
 import { Button, Badge } from "@/components/ui";
 import { useRecipeStore, useFamilyStore, usePriceStore } from "@/stores/huddle-stores";
@@ -92,13 +92,46 @@ export default function RecipeDetail() {
         <h1 className="text-3xl font-display font-bold leading-tight mb-3">{recipe.name}</h1>
 
         {/* Badges */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-3">
           {recipe.cook_time && <Badge variant="outline"><Clock size={12} className="mr-1" /> {recipe.cook_time}m</Badge>}
           {recipe.calories  && <Badge variant="outline"><Flame size={12} className="mr-1" /> {recipe.calories} cal</Badge>}
           {recipe.cuisine   && <Badge variant="outline"><Globe size={12} className="mr-1" /> {recipe.cuisine}</Badge>}
           {recipe.vegetarian && <Badge variant="success"><Leaf size={12} className="mr-1" /> Veg</Badge>}
           <Badge variant="outline"><Users size={12} className="mr-1" /> {servings} serves</Badge>
         </div>
+
+        {/* Meal slot badges */}
+        {!recipe.is_component && recipe.meal_slots && recipe.meal_slots.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {recipe.meal_slots.map(slot => {
+              const label: Record<string, string> = {
+                breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner",
+                morning_snack: "AM Snack", afternoon_snack: "PM Snack",
+                night_snack: "Night Snack", dessert: "Dessert",
+              };
+              return (
+                <span key={slot} className="inline-flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                  <Utensils size={10} />
+                  {label[slot] ?? slot}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Original recipe link */}
+        {recipe.source_url && (
+          <a
+            href={recipe.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-xs font-semibold text-primary hover:underline mb-5"
+          >
+            <LinkIcon size={13} />
+            View original recipe
+            <ExternalLink size={11} className="opacity-60" />
+          </a>
+        )}
 
         {/* Plan inclusion toggle — hidden for base recipes (always excluded) */}
         {!recipe.is_component && (
