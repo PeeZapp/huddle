@@ -1,0 +1,21 @@
+packages:
+  "framer-motion": "Smooth page transitions and micro-interactions"
+  "zustand": "Simple, fast state management with localStorage persistence"
+  "date-fns": "Reliable date formatting and manipulation"
+  "firebase": "Real-time data sync across family members"
+  "vite-plugin-pwa": "Progressive Web App support for installability"
+  "lucide-react": "Clean, consistent iconography"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility function to efficiently merge Tailwind CSS classes"
+
+images:
+  - path: "artifacts/huddle/public/images/hero-food.png"
+    description: "Beautiful, bright overhead shot of healthy fresh food ingredients like avocado, tomatoes, greens, and eggs on a clean white marble background with soft natural lighting."
+    aspect_ratio: "16:9"
+  - path: "artifacts/huddle/public/images/empty-plate.png"
+    description: "Minimalist 3D illustration of an empty white ceramic plate on a soft pastel green background with subtle lighting and soft shadows."
+    aspect_ratio: "1:1"
+
+notes:
+  - Using Zustand with `persist` middleware for robust offline-first functionality, with Firebase as a sync layer if configured.
+  - The AI proxy is assumed to be at `POST /api/ai` expecting `{ prompt, responseFormat: "json" }` and returning `{ result: string }`.

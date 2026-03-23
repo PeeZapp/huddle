@@ -1,6 +1,6 @@
 kind = "mobile"
-previewPath = "/"
-title = "FamilyPlate"
+previewPath = "/mobile"
+title = "Huddle (Native)"
 version = "1.0.0"
 id = "artifacts/family-plate"
 router = "expo-domain"
@@ -13,14 +13,14 @@ version = "1.0.0"
 ensurePreviewReachable = "/status"
 localPort = 22620
 name = "expo"
-paths = ["/"]
+paths = ["/mobile"]
 
 [services.development]
 run = "pnpm --filter @workspace/family-plate run dev"
 
 [services.env]
 PORT = "22620"
-BASE_PATH = "/"
+BASE_PATH = "/mobile"
 
 [services.production]
 build = ["pnpm", "--filter", "@workspace/family-plate", "run", "build"]

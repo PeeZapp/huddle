@@ -3,6 +3,7 @@
 ## Overview
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+This project is "Huddle" — a family meal planning app with a PWA-first approach.
 
 ## Stack
 
@@ -11,7 +12,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
+- **Database**: PostgreSQL + Drizzle ORM (API server only)
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
@@ -20,107 +21,85 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ```text
 artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
-├── lib/                    # Shared libraries
-│   ├── api-spec/           # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/   # Generated React Query hooks
-│   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+├── artifacts/                   # Deployable applications
+│   ├── api-server/              # Express API server (port 8080) — AI proxy at POST /api/ai
+│   ├── huddle/                  # PWA React + Vite (port 20881) — ROOT path "/"
+│   └── family-plate/            # Expo React Native app — MOBILE path "/mobile"
+├── lib/                         # Shared libraries
+│   ├── api-spec/                # OpenAPI spec + Orval codegen config
+│   ├── api-client-react/        # Generated React Query hooks
+│   ├── api-zod/                 # Generated Zod schemas from OpenAPI
+│   └── db/                      # Drizzle ORM schema + DB connection
+├── scripts/                     # Utility scripts
+│   └── src/                     # Individual .ts scripts
+├── pnpm-workspace.yaml          # pnpm workspace config
+├── tsconfig.base.json           # Shared TS options
+├── tsconfig.json                # Root TS project references
+└── package.json                 # Root package with hoisted devDeps
 ```
+
+## Huddle PWA (artifacts/huddle)
+
+The primary product — a mobile-first PWA for family meal planning.
+
+### Key Features
+1. **Plan Tab** — Weekly meal planner (Mon-Sun), active meal slots (breakfast/lunch/dinner + extras)
+2. **Shopping Tab** — Auto-generated + manual shopping list, grouped by category
+3. **Recipes Tab** — Recipe library with search/filter, AI import from URL or text
+4. **Lists Tab** — Custom family lists (grocery extras, to-dos, etc.)
+5. **Nutrition Tab** — Daily/weekly nutrition tracking, goals, food log
+
+### Architecture
+- **Framework**: React + Vite + Tailwind CSS v4
+- **State**: Zustand stores with localStorage persistence (web — NOT AsyncStorage)
+- **Stores**: `src/stores/huddle-stores.ts` — familyStore, recipeStore, mealPlanStore, shoppingStore, listsStore, nutritionStore
+- **Routing**: wouter — routes: /, /shopping, /recipes, /recipe/:id, /import, /generate, /nutrition, /lists, /family, /setup
+- **Navigation**: Bottom tab bar (Plan, Shopping, Recipes, Lists, Nutrition)
+- **AI**: `src/hooks/use-ai.ts` — POST /api/ai → API server proxies to Anthropic Claude
+- **PWA**: vite-plugin-pwa, theme_color #639922, installable
+- **Firebase**: Configured (env vars: VITE_FIREBASE_*) for cross-device sync (optional)
+
+### Data Types (`src/lib/types.ts`)
+- `Recipe`, `MealPlan`, `ShoppingItem`, `FamilyGroup`, `FoodLog`, `CustomList`, `NutritionGoals`
+- `MealSlotKey`: breakfast | morning_snack | lunch | afternoon_snack | dinner | night_snack | dessert
+- `Day`: monday | tuesday | wednesday | thursday | friday | saturday | sunday
+- `DAYS`, `DAY_LABELS`, `MEAL_SLOTS` — exported constants
+
+### Brand
+- Primary green: `#639922` (hsl ~93, 58%, 36%)
+- Family code format: `FP-XXXX`
+- App name: "Huddle"
+
+## API Server (artifacts/api-server)
+
+Express server at port 8080.
+- `POST /api/ai` — AI proxy to Anthropic Claude. Accepts `{ prompt, responseFormat: "json" | "text" }`, returns `{ result }`
+- Uses `AI_INTEGRATIONS_ANTHROPIC_BASE_URL` + `AI_INTEGRATIONS_ANTHROPIC_API_KEY` (Replit AI integration)
+
+## Expo App (artifacts/family-plate)
+
+React Native app at `/mobile` path. Contains Firebase integration and all screens.
+Note: Has intermittent Metro crash bug related to `_tmp_` directories in node_modules watch.
+
+## Environment Variables
+
+### PWA (VITE_ prefix for browser exposure)
+- `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`
+
+### API Server
+- `AI_INTEGRATIONS_ANTHROPIC_BASE_URL` — Replit AI integration proxy URL
+- `AI_INTEGRATIONS_ANTHROPIC_API_KEY` — Replit AI integration key
 
 ## TypeScript & Composite Projects
 
 Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references. This means:
 
-- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`). This builds the full dependency graph so that cross-package imports resolve correctly. Running `tsc` inside a single package will fail if its dependencies haven't been built yet.
-- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck; actual JS bundling is handled by esbuild/tsx/vite...etc, not `tsc`.
-- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array. `tsc --build` uses this to determine build order and skip up-to-date packages.
+- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`).
+- **`emitDeclarationOnly`** — only emit `.d.ts` files during typecheck; actual JS bundling handled by esbuild/tsx/vite.
+- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array.
 
 ## Root Scripts
 
 - `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
 - `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
-
-## Packages
-
-### `artifacts/api-server` (`@workspace/api-server`)
-
-Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
-
-- Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /health` (full path: `/api/health`)
-- Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
-
-### `lib/db` (`@workspace/db`)
-
-Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
-
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
-
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
-
-### `lib/api-spec` (`@workspace/api-spec`)
-
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
-
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
-
-Run codegen: `pnpm --filter @workspace/api-spec run codegen`
-
-### `lib/api-zod` (`@workspace/api-zod`)
-
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
-
-### `lib/api-client-react` (`@workspace/api-client-react`)
-
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
-
-### `scripts` (`@workspace/scripts`)
-
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
-
-### `artifacts/family-plate` (`@workspace/family-plate`) — Huddle App
-
-React Native Expo mobile app — family meal planner. App name: **Huddle**. Primary color: `#639922`.
-
-**Tech:**
-- Expo Router (file-based routing, tabs + modals)
-- Zustand stores with AsyncStorage persistence (keyed by family code `FP-XXXX`)
-- AI via Anthropic Claude (Replit AI Integrations: `EXPO_PUBLIC_AI_BASE_URL` + `EXPO_PUBLIC_AI_API_KEY` exposed in dev script)
-- `@expo/vector-icons` (Feather) — no emojis in UI
-- Inter font family
-
-**Screens:**
-- `app/setup.tsx` — onboarding: create/join family group
-- `app/(tabs)/index.tsx` — Plan tab: weekly meal planner (Mon-Sun, 7 meal slots)
-- `app/(tabs)/shopping.tsx` — Shopping list
-- `app/(tabs)/recipes.tsx` — Recipe library
-- `app/(tabs)/lists.tsx` — Custom family lists
-- `app/(tabs)/more.tsx` — More tab: hub for Nutrition, Family, Import, Generate
-- `app/recipe/[id].tsx` — Recipe detail + edit
-- `app/import-recipe.tsx` — AI recipe import (URL or text)
-- `app/generate.tsx` — AI weekly meal plan generator
-- `app/nutrition.tsx` — Nutrition tracking + food log + goals
-- `app/family.tsx` — Family settings (members, code, country)
-
-**Stores:** `familyStore`, `recipeStore`, `mealPlanStore`, `shoppingStore`, `listsStore`, `calendarStore`, `nutritionStore`
-
-**Meal slots:** breakfast, morning_snack, lunch, afternoon_snack, dinner, night_snack, dessert
-
-**IMPORTANT:** Firebase was removed — it caused a Metro bundler crash (ENOENT on temp directories). Use AsyncStorage for all persistence. Firebase can be re-added only after the Metro watcher issue is resolved (use `watchFolders`/`blockList` in `metro.config.js`).
