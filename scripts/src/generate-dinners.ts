@@ -61,6 +61,10 @@ const BATCHES = [
   "Seafood and fish — exactly these 5 dishes: Garlic Butter Prawns with Linguine, Baked Lemon Herb Salmon, Pan-Seared Cod with Capers, Fish Tacos with Mango Salsa, Spanish Seafood Paella",
   "Mexican and Middle Eastern — exactly these 5 dishes: Beef Tacos al Pastor, Chicken Enchiladas Verde, Moroccan Lamb Tagine, Shakshuka with Feta, Lebanese Chicken Shawarma",
   "Vegetarian and quick weeknight — exactly these 5 dishes: Mushroom and Lentil Bolognese, Chickpea and Spinach Curry, Roasted Vegetable Tart, Black Bean Chili, Creamy Tomato Gnocchi",
+  "American and BBQ classics — exactly these 5 dishes: Slow-Cooker Pulled Pork, Honey Garlic Chicken Thighs, Classic Beef Burger, BBQ Baby Back Ribs, Cajun Jambalaya",
+  "Greek and Turkish — exactly these 5 dishes: Lamb Kofta with Tzatziki, Spanakopita, Greek Moussaka, Turkish Chicken Pide, Beef and Halloumi Skewers",
+  "Chinese and Southeast Asian — exactly these 5 dishes: Kung Pao Chicken, Beef and Broccoli Stir-Fry, Singapore Noodles, Hainanese Chicken Rice, Mapo Tofu",
+  "More Italian classics — exactly these 5 dishes: Osso Buco with Gremolata, Saltimbocca alla Romana, Penne all'Arrabbiata, Clam Linguine, Prawn and Courgette Risotto",
 ];
 
 async function callClaude(prompt: string): Promise<string> {
@@ -182,7 +186,7 @@ function loadExisting(): { recipes: SeedRecipe[]; seen: Set<string> } {
 }
 
 async function main() {
-  console.log("\n🍽  Generating 30 unique dinner recipes\n");
+  console.log("\n🍽  Generating 50 unique dinner recipes\n");
 
   // Resume from existing file if present
   const { recipes: all, seen } = loadExisting();
