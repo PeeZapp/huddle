@@ -58,7 +58,7 @@ export default function SlotActionSheet({
   const [estimatedNutrition, setEstimated]  = useState<Partial<MealSlotData> | null>(null);
   const [estimateError, setEstimateError]   = useState("");
 
-  // Reset state on open/close
+  // Reset state on open/close + lock body scroll while sheet is open
   useEffect(() => {
     if (open) {
       setMode(existing ? "actions" : "library");
@@ -66,6 +66,10 @@ export default function SlotActionSheet({
       setManualText("");
       setEstimated(null);
       setEstimateError("");
+      // Prevent the background page from scrolling
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
     }
   }, [open, existing]);
 
@@ -152,10 +156,11 @@ No markdown, no explanation — raw JSON only.`,
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — also swallows touchmove so the page behind can't scroll */}
       <div
         className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
+        onTouchMove={(e) => e.preventDefault()}
       />
 
       {/* Sheet */}
@@ -184,7 +189,7 @@ No markdown, no explanation — raw JSON only.`,
 
         {/* ── ACTIONS mode (filled slot) ──────────────────────────────────── */}
         {mode === "actions" && existing && (
-          <div className="p-5 space-y-3 overflow-y-auto flex-1">
+          <div className="p-5 space-y-3 overflow-y-auto flex-1" style={{ overscrollBehavior: "contain" }}>
             {/* Current meal summary */}
             <div className="flex items-center gap-3 bg-secondary/50 rounded-2xl p-4">
               <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-2xl shadow-sm shrink-0">
@@ -263,7 +268,7 @@ No markdown, no explanation — raw JSON only.`,
             </button>
 
             {/* Recipe list */}
-            <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-2">
+            <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-2" style={{ overscrollBehavior: "contain" }}>
               {filteredRecipes.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-10">
                   No recipes match "{query}"
@@ -305,7 +310,7 @@ No markdown, no explanation — raw JSON only.`,
 
         {/* ── MANUAL mode ─────────────────────────────────────────────────── */}
         {mode === "manual" && (
-          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
+          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4" style={{ overscrollBehavior: "contain" }}>
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
                 What did you have?
