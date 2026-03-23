@@ -15,12 +15,14 @@ import { estimateRecipeCost, getCurrencyConfig, formatCost } from "@/lib/recipe-
 const SNACK_SLOTS = ["morning_snack", "afternoon_snack", "night_snack"];
 
 // Display slot options — snacks collapsed to one entry
+// "base" is a special value that filters to component/base recipes
 const DISPLAY_SLOTS = [
   { value: "breakfast", label: "Breakfast" },
   { value: "lunch",     label: "Lunch" },
   { value: "dinner",    label: "Dinner" },
   { value: "snack",     label: "Snacks" },   // matches all three snack slots
   { value: "dessert",   label: "Dessert" },
+  { value: "base",      label: "Base recipes" },
 ];
 
 const SLOT_SHORT: Record<string, string> = {
@@ -92,16 +94,26 @@ function sortRecipes(list: Recipe[], key: SortKey, dir: SortDir, currency: Retur
 
 // ─── Filter chip ──────────────────────────────────────────────────────────────
 
-function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function FilterChip({
+  label, active, onClick, icon, baseStyle,
+}: {
+  label: string; active: boolean; onClick: () => void;
+  icon?: React.ReactNode; baseStyle?: boolean;
+}) {
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border whitespace-nowrap ${
+      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border whitespace-nowrap ${
         active
-          ? "bg-primary text-white border-primary"
-          : "bg-white text-muted-foreground border-border hover:border-primary/30"
+          ? baseStyle
+            ? "bg-primary/90 text-white border-primary/90"
+            : "bg-primary text-white border-primary"
+          : baseStyle
+            ? "bg-primary/8 text-primary border-primary/30 hover:border-primary/60"
+            : "bg-white text-muted-foreground border-border hover:border-primary/30"
       }`}
     >
+      {icon}
       {label}
     </button>
   );
@@ -199,12 +211,14 @@ export default function Recipes() {
   const mealRecipes   = familyRecipes.filter(r => !r.is_component);
   const baseRecipes   = familyRecipes.filter(r => !!r.is_component);
 
-  // ── Slot filter matching — "snack" matches all three snack slots ──
+  // ── Slot filter matching — "snack" matches all three snack slots, "base" handled separately ──
   const slotMatches = (r: Recipe) => {
-    if (!filterSlot) return true;
+    if (!filterSlot || filterSlot === "base") return true;
     if (filterSlot === "snack") return r.meal_slots?.some(s => SNACK_SLOTS.includes(s)) ?? false;
     return r.meal_slots?.includes(filterSlot) ?? false;
   };
+
+  const isBaseFilter = filterSlot === "base";
 
   // ── Apply search + filters ──
   let filteredMeal = mealRecipes.filter(r => {
@@ -226,6 +240,9 @@ export default function Recipes() {
     return r.name.toLowerCase().includes(q) || r.ingredients?.some(i => i.name.toLowerCase().includes(q));
   });
 
+  // When "Base recipes" filter is active, show base recipes in the main grid
+  const filteredBaseForGrid = filteredBaseRecipes;
+
   // ── Fridge mode ──
   const fridgeScored = pantry.length
     ? mealRecipes
@@ -234,7 +251,9 @@ export default function Recipes() {
         .sort((a, b) => b.matched - a.matched || b.matched / (b.total || 1) - a.matched / (a.total || 1))
     : [];
 
-  const displayList = mode === "search" ? filteredMeal : fridgeScored.map(s => s.recipe);
+  const displayList = mode === "search"
+    ? (isBaseFilter ? filteredBaseForGrid : filteredMeal)
+    : fridgeScored.map(s => s.recipe);
   const scoreMap    = new Map(fridgeScored.map(s => [s.recipe.id, s]));
 
   // ── Slot badge label on cards — collapse all snack variants ──
@@ -316,6 +335,8 @@ export default function Recipes() {
                   label={label}
                   active={filterSlot === value}
                   onClick={() => setFilterSlot(filterSlot === value ? null : value)}
+                  icon={value === "base" ? <Layers size={11} /> : undefined}
+                  baseStyle={value === "base"}
                 />
               ))}
             </div>
@@ -414,17 +435,17 @@ export default function Recipes() {
       {/* ── Recipe grid ──────────────────────────────────────────────────── */}
       <div className="p-5">
 
-        {mode === "search" && filteredMeal.length > 0 && (
+        {mode === "search" && displayList.length > 0 && (
           <p className="text-xs text-muted-foreground mb-4">
-            {filteredMeal.length} recipe{filteredMeal.length !== 1 ? "s" : ""}
+            {displayList.length} recipe{displayList.length !== 1 ? "s" : ""}
             {filterSlot ? ` · ${DISPLAY_SLOTS.find(s => s.value === filterSlot)?.label ?? filterSlot}` : ""}
-            {filterVeg ? " · Vegetarian" : ""}
-            {sortKey ? ` · Sorted by ${SORT_OPTIONS.find(o => o.key === sortKey)?.label} (${sortDir === "asc" ? "↑" : "↓"})` : ""}
+            {filterVeg && !isBaseFilter ? " · Vegetarian" : ""}
+            {sortKey && !isBaseFilter ? ` · Sorted by ${SORT_OPTIONS.find(o => o.key === sortKey)?.label} (${sortDir === "asc" ? "↑" : "↓"})` : ""}
           </p>
         )}
 
         {/* Empty state — search mode */}
-        {mode === "search" && filteredMeal.length === 0 && (
+        {mode === "search" && displayList.length === 0 && (
           <div className="text-center py-20 px-6">
             <div className="w-24 h-24 bg-secondary rounded-full flex items-center justify-center mx-auto mb-6">
               <img
@@ -564,8 +585,8 @@ export default function Recipes() {
           </div>
         )}
 
-        {/* Base recipes section */}
-        {mode === "search" && !filterSlot && filteredBaseRecipes.length > 0 && (
+        {/* Base recipes section — hidden when base filter active (shown in main grid instead) */}
+        {mode === "search" && !filterSlot && !isBaseFilter && filteredBaseRecipes.length > 0 && (
           <div className="mt-8">
             <div className="flex items-center gap-2 mb-3">
               <Layers size={15} className="text-primary" />
