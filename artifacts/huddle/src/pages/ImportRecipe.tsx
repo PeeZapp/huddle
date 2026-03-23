@@ -410,46 +410,51 @@ export default function ImportRecipe() {
 
           {/* Slot / type picker */}
           <div className="bg-white rounded-2xl border border-border overflow-hidden">
-            <div className="px-4 pt-4 pb-2">
-              <p className="text-sm font-bold">Where does this recipe belong?</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Choose a meal slot or save as a base recipe.</p>
+            {/* Meal slot grid — dimmed when base recipe is on */}
+            <div className="px-3 pt-3 pb-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1 mb-2">Meal slot</p>
+              <div className={`grid grid-cols-2 gap-2 transition-opacity duration-200 ${selectedSlot === "base" ? "opacity-30 pointer-events-none select-none" : ""}`}>
+                {MEAL_SLOTS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedSlot(key)}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all ${
+                      selectedSlot === key
+                        ? "bg-primary/10 border-primary/40 ring-1 ring-primary/30 text-primary font-bold"
+                        : "bg-secondary/40 border-transparent hover:border-primary/20 font-medium"
+                    }`}
+                  >
+                    {selectedSlot === key && <Check size={11} className="shrink-0" />}
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Base recipe option */}
-            <button
-              onClick={() => setSelectedSlot("base")}
-              className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-all border-t border-border ${
-                selectedSlot === "base"
-                  ? "bg-primary/8 text-foreground"
-                  : "hover:bg-secondary/60"
-              }`}
-            >
-              <Layers size={18} className={`mt-0.5 shrink-0 ${selectedSlot === "base" ? "text-primary" : "text-muted-foreground"}`} />
-              <div className="flex-1">
-                <span className={`text-sm font-bold block ${selectedSlot === "base" ? "text-primary" : ""}`}>Base Recipe</span>
-                <span className="text-[11px] text-muted-foreground leading-relaxed">
-                  A sub-recipe used as an ingredient (e.g. dough, sauce, stock). Won't appear in the meal planner.
-                </span>
+            {/* Base recipe toggle row */}
+            <div className={`flex items-center gap-3 px-4 py-3.5 border-t border-border transition-colors ${selectedSlot === "base" ? "bg-primary/5" : ""}`}>
+              <Layers size={17} className={`shrink-0 transition-colors ${selectedSlot === "base" ? "text-primary" : "text-muted-foreground"}`} />
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-bold transition-colors ${selectedSlot === "base" ? "text-primary" : ""}`}>Base Recipe</p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  A sub-recipe used as an ingredient — won't appear in the planner.
+                </p>
               </div>
-              {selectedSlot === "base" && <Check size={16} className="text-primary shrink-0 mt-0.5" />}
-            </button>
-
-            {/* Meal slot grid */}
-            <div className="grid grid-cols-2 gap-2 p-3 border-t border-border">
-              {MEAL_SLOTS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setSelectedSlot(key)}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all ${
-                    selectedSlot === key
-                      ? "bg-primary/10 border-primary/40 ring-1 ring-primary/30 text-primary font-bold"
-                      : "bg-secondary/40 border-transparent hover:border-primary/20 font-medium"
+              {/* Toggle switch */}
+              <button
+                onClick={() => setSelectedSlot(selectedSlot === "base" ? "dinner" : "base")}
+                aria-checked={selectedSlot === "base"}
+                role="switch"
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+                  selectedSlot === "base" ? "bg-primary" : "bg-border"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+                    selectedSlot === "base" ? "translate-x-5" : "translate-x-0"
                   }`}
-                >
-                  {selectedSlot === key && <Check size={11} className="shrink-0" />}
-                  {label}
-                </button>
-              ))}
+                />
+              </button>
             </div>
           </div>
 
