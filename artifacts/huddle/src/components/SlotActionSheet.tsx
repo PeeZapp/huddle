@@ -165,7 +165,7 @@ No markdown, no explanation — raw JSON only.`,
 
       {/* Sheet */}
       <div className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-md bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ maxHeight: "88dvh" }}
+        style={{ height: "88dvh" }}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
