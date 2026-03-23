@@ -4,9 +4,11 @@ import {
   ArrowLeft, Link as LinkIcon, FileText, Download,
   AlertCircle, Loader2, CheckCircle2, ShieldCheck, Sparkles,
   Clock, Users, UtensilsCrossed, BookOpen, RotateCcw, Save,
+  Layers, Check,
 } from "lucide-react";
 import { Button, Input } from "@/components/ui";
 import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
+import { MEAL_SLOTS, MealSlotKey } from "@/lib/types";
 
 // ── AI helpers ────────────────────────────────────────────────────────────────
 
@@ -265,6 +267,8 @@ export default function ImportRecipe() {
   const [previewSource, setPreviewSource] = useState<Source>("text-paste");
   const [previewDomain, setPreviewDomain] = useState<string | undefined>();
   const [sourceUrl, setSourceUrl]       = useState<string | undefined>();
+  // Slot selection: MealSlotKey, or "base" for a component recipe, or null (use AI suggestion)
+  const [selectedSlot, setSelectedSlot] = useState<MealSlotKey | "base" | null>(null);
 
   const isLoading = phase === "fetching" || phase === "extracting" || phase === "saving";
 
@@ -291,6 +295,7 @@ export default function ImportRecipe() {
         setPreviewSource("text-paste");
         setPreviewDomain(undefined);
         setSourceUrl(undefined);
+        setSelectedSlot((parsed.meal_slots as MealSlotKey[])?.[0] ?? "dinner");
         setPhase("preview");
       } catch {
         setPhase("error");
@@ -353,6 +358,7 @@ export default function ImportRecipe() {
       setPreviewSource(src);
       setPreviewDomain(domain);
       setSourceUrl(trimmedUrl);
+      setSelectedSlot((parsed.meal_slots as MealSlotKey[])?.[0] ?? "dinner");
       setPhase("preview");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Import failed";
@@ -366,8 +372,16 @@ export default function ImportRecipe() {
     if (!previewData || !familyGroup) return;
     setPhase("saving");
     try {
+      const isBase = selectedSlot === "base";
       const recipe = addRecipe({
         ...previewData,
+        is_component: isBase || undefined,
+        excluded_from_auto: isBase || undefined,
+        meal_slots: isBase
+          ? []
+          : selectedSlot
+            ? [selectedSlot]
+            : (previewData.meal_slots as MealSlotKey[]) ?? ["dinner"],
         family_code: familyGroup.code,
         imported: true,
         source_url: sourceUrl,
@@ -393,13 +407,62 @@ export default function ImportRecipe() {
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4 pb-36">
           <SourceDisclaimer source={previewSource} domain={previewDomain} />
+
+          {/* Slot / type picker */}
+          <div className="bg-white rounded-2xl border border-border overflow-hidden">
+            <div className="px-4 pt-4 pb-2">
+              <p className="text-sm font-bold">Where does this recipe belong?</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Choose a meal slot or save as a base recipe.</p>
+            </div>
+
+            {/* Base recipe option */}
+            <button
+              onClick={() => setSelectedSlot("base")}
+              className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-all border-t border-border ${
+                selectedSlot === "base"
+                  ? "bg-primary/8 text-foreground"
+                  : "hover:bg-secondary/60"
+              }`}
+            >
+              <Layers size={18} className={`mt-0.5 shrink-0 ${selectedSlot === "base" ? "text-primary" : "text-muted-foreground"}`} />
+              <div className="flex-1">
+                <span className={`text-sm font-bold block ${selectedSlot === "base" ? "text-primary" : ""}`}>Base Recipe</span>
+                <span className="text-[11px] text-muted-foreground leading-relaxed">
+                  A sub-recipe used as an ingredient (e.g. dough, sauce, stock). Won't appear in the meal planner.
+                </span>
+              </div>
+              {selectedSlot === "base" && <Check size={16} className="text-primary shrink-0 mt-0.5" />}
+            </button>
+
+            {/* Meal slot grid */}
+            <div className="grid grid-cols-2 gap-2 p-3 border-t border-border">
+              {MEAL_SLOTS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setSelectedSlot(key)}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all ${
+                    selectedSlot === key
+                      ? "bg-primary/10 border-primary/40 ring-1 ring-primary/30 text-primary font-bold"
+                      : "bg-secondary/40 border-transparent hover:border-primary/20 font-medium"
+                  }`}
+                >
+                  {selectedSlot === key && <Check size={11} className="shrink-0" />}
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <RecipePreview recipe={previewData} />
         </div>
 
         {/* Sticky footer with action buttons */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-border p-4 space-y-2.5 z-20">
           <Button className="w-full" size="lg" onClick={handleSave}>
-            <Save size={18} className="mr-2" /> Save to Library
+            <Save size={18} className="mr-2" />
+            {selectedSlot === "base"
+              ? "Save as Base Recipe"
+              : `Save to Library${selectedSlot ? ` · ${MEAL_SLOTS.find(s => s.key === selectedSlot)?.label ?? ""}` : ""}`}
           </Button>
           <button
             onClick={handleStartOver}

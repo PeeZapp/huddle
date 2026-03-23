@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Check, Plus, Trash2, Wand2, ShoppingCart } from "lucide-react";
+import { Check, Plus, Trash2, Wand2, ShoppingCart, Layers } from "lucide-react";
+import { useLocation } from "wouter";
 import { Button, Input } from "@/components/ui";
 import { useShoppingStore, useMealPlanStore, useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
 import { getWeekStart } from "@/lib/utils";
@@ -74,6 +75,7 @@ function groupByCategory(items: ShoppingItem[]): Map<string, ShoppingItem[]> {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Shopping() {
+  const [, setLocation]                                          = useLocation();
   const { familyGroup }                                           = useFamilyStore();
   const { items, addItem, toggleItem, deleteItem, clearChecked, generateFromPlan } = useShoppingStore();
   const { getPlan }                                              = useMealPlanStore();
@@ -193,14 +195,23 @@ export default function Shopping() {
                     onClick={() => toggleItem(item.id)}
                     className="w-6 h-6 rounded-full border-2 border-primary/40 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
                   />
-                  <span className="flex-1 font-medium text-sm">
-                    {item.name}
-                    {item.amount && (
-                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                        {item.amount}
-                      </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-medium text-sm">{item.name}</span>
+                      {item.amount && (
+                        <span className="text-xs font-normal text-muted-foreground">{item.amount}</span>
+                      )}
+                    </div>
+                    {item.is_base_recipe && item.base_recipe_id && (
+                      <button
+                        onClick={() => setLocation(`/recipe/${item.base_recipe_id}`)}
+                        className="flex items-center gap-1 text-[10px] font-bold text-primary mt-0.5 hover:underline"
+                      >
+                        <Layers size={9} />
+                        from {item.base_recipe_name ?? "base recipe"}
+                      </button>
                     )}
-                  </span>
+                  </div>
                   <button
                     onClick={() => deleteItem(item.id)}
                     className="text-muted-foreground/50 hover:text-destructive transition-colors p-1 shrink-0"

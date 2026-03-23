@@ -49,6 +49,31 @@ export const useFamilyStore = create<FamilyState>()(
   )
 );
 
+// ── Base-recipe linking helpers ────────────────────────────────────────────────
+function normIngName(name: string): string {
+  return name.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+/**
+ * Walk through `recipes` and, for each ingredient whose normalised name
+ * matches one of the `baseRecipes`, attach `base_recipe_id`.
+ * Returns a NEW array — no mutation.
+ */
+function linkBaseRecipesToLibrary(recipes: Recipe[], baseRecipes: Recipe[]): Recipe[] {
+  if (baseRecipes.length === 0) return recipes;
+  const baseMap = new Map(baseRecipes.map(b => [normIngName(b.name), b.id]));
+  return recipes.map(recipe => {
+    if (recipe.is_component) return recipe; // base recipes don't link to themselves
+    const newIngs = recipe.ingredients?.map(ing => {
+      const id = baseMap.get(normIngName(ing.name));
+      if (id && ing.base_recipe_id !== id) return { ...ing, base_recipe_id: id };
+      return ing;
+    });
+    if (!newIngs) return recipe;
+    return { ...recipe, ingredients: newIngs };
+  });
+}
+
 // --- RECIPE STORE ---
 interface RecipeState {
   recipes: Recipe[];
@@ -66,11 +91,49 @@ export const useRecipeStore = create<RecipeState>()(
       seedsLoaded: false,
       addRecipe: (data) => {
         const recipe: Recipe = { ...data, id: generateId(), created_at: new Date().toISOString() };
-        set({ recipes: [...get().recipes, recipe] });
+        let updatedLibrary = [...get().recipes, recipe];
+
+        if (recipe.is_component) {
+          // New base recipe: link it into ALL existing recipes that mention it by ingredient name
+          updatedLibrary = linkBaseRecipesToLibrary(updatedLibrary, [recipe]);
+        } else {
+          // Regular recipe: link any existing base recipes into its ingredients
+          const bases = get().recipes.filter(r => r.is_component);
+          if (bases.length > 0) {
+            const linked = linkBaseRecipesToLibrary([recipe], bases);
+            updatedLibrary = [...get().recipes, linked[0]];
+            // Replace the placeholder we pushed with the linked version
+            const addedLinked = linked[0];
+            set({ recipes: [...get().recipes, addedLinked] });
+            return addedLinked;
+          }
+        }
+
+        set({ recipes: updatedLibrary });
         return recipe;
       },
-      updateRecipe: (id, updates) => set({ recipes: get().recipes.map((r) => r.id === id ? { ...r, ...updates } : r) }),
-      deleteRecipe: (id) => set({ recipes: get().recipes.filter((r) => r.id !== id) }),
+      updateRecipe: (id, updates) => {
+        const current = get().recipes.find(r => r.id === id);
+        const updated = { ...current, ...updates } as Recipe;
+        let all = get().recipes.map(r => r.id === id ? updated : r);
+
+        // If we're updating a base recipe's name, re-link the whole library
+        if (updated.is_component && updates.name) {
+          all = linkBaseRecipesToLibrary(all, all.filter(r => r.is_component));
+        }
+        set({ recipes: all });
+      },
+      deleteRecipe: (id) => {
+        // When a base recipe is deleted, remove its links from all ingredients
+        const all = get().recipes.filter(r => r.id !== id);
+        const cleaned = all.map(r => ({
+          ...r,
+          ingredients: r.ingredients?.map(ing =>
+            ing.base_recipe_id === id ? { ...ing, base_recipe_id: undefined } : ing
+          ),
+        }));
+        set({ recipes: cleaned });
+      },
       loadSeeds: async (familyCode) => {
         if (get().seedsLoaded) return 0;
         try {
@@ -161,33 +224,53 @@ export const useShoppingStore = create<ShoppingState>()(
       deleteItem: (id) => set({ items: get().items.filter((i) => i.id !== id) }),
       clearChecked: (fc) => set({ items: get().items.filter((i) => i.family_code !== fc || !i.checked) }),
       generateFromPlan: (plan, recipes) => {
+        // Build a map of base-recipe id → Recipe for quick lookup
+        const baseRecipeMap = new Map(recipes.filter(r => r.is_component).map(r => [r.id, r]));
+
         // Collect every ingredient from every filled slot
-        const raw: { name: string; amount?: string; category?: string }[] = [];
+        const raw: { name: string; amount?: string; category?: string; base_recipe_id?: string }[] = [];
         Object.values(plan.slots).forEach(slot => {
           if (slot.recipe_id) {
             const recipe = recipes.find(r => r.id === slot.recipe_id);
             if (recipe?.ingredients) {
               recipe.ingredients.forEach(ing => {
-                raw.push({ name: ing.name, amount: ing.amount, category: ing.category });
+                raw.push({ name: ing.name, amount: ing.amount, category: ing.category, base_recipe_id: ing.base_recipe_id });
               });
+              // If the recipe itself IS a base recipe link (unusual), its own ingredients are also pulled in automatically
             }
           }
         });
 
         // Deduplicate by name and combine amounts (e.g. 3×50g butter → 150g butter)
-        const deduped = deduplicateIngredients(raw);
+        // We need to track base_recipe_id through deduplication — deduplicate plain fields then re-attach
+        const rawPlain = raw.map(({ name, amount, category }) => ({ name, amount, category }));
+        const deduped = deduplicateIngredients(rawPlain);
+
+        // Re-attach the base_recipe_id from the first raw occurrence with that name
+        const baseIdByName = new Map<string, string>();
+        raw.forEach(r => {
+          if (r.base_recipe_id) {
+            const key = r.name.toLowerCase().trim();
+            if (!baseIdByName.has(key)) baseIdByName.set(key, r.base_recipe_id);
+          }
+        });
 
         const now = new Date().toISOString();
-        const newItems: ShoppingItem[] = deduped.map(ing => ({
-          id: generateId(),
-          name: ing.name,
-          amount: ing.amount,
-          category: ing.category || "other",
-          checked: false,
-          week_start: plan.week_start,
-          family_code: plan.family_code,
-          created_at: now,
-        }));
+        const newItems: ShoppingItem[] = deduped.map(ing => {
+          const brId = baseIdByName.get(ing.name.toLowerCase().trim());
+          const br   = brId ? baseRecipeMap.get(brId) : undefined;
+          return {
+            id: generateId(),
+            name: ing.name,
+            amount: ing.amount,
+            category: ing.category || "other",
+            checked: false,
+            week_start: plan.week_start,
+            family_code: plan.family_code,
+            created_at: now,
+            ...(br ? { is_base_recipe: true, base_recipe_id: br.id, base_recipe_name: br.name } : {}),
+          };
+        });
 
         // Remove any existing unchecked items from this week before adding fresh ones
         const existing = get().items.filter(

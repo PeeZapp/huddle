@@ -46,9 +46,11 @@ function recipeMatchesSlot(recipe: Recipe, slot: MealSlotKey): boolean {
 }
 
 // Return recipes that can fill a slot (falls back to the full library if nothing matches)
+// Base recipes (is_component) and excluded recipes are never picked for auto-generation.
 export function recipesForSlot(recipes: Recipe[], slot: MealSlotKey): Recipe[] {
-  const matched = recipes.filter(r => recipeMatchesSlot(r, slot));
-  return matched.length > 0 ? matched : recipes;
+  const eligible = recipes.filter(r => !r.is_component && !r.excluded_from_auto);
+  const matched  = eligible.filter(r => recipeMatchesSlot(r, slot));
+  return matched.length > 0 ? matched : eligible;
 }
 
 // Calculate calorie/protein target for one slot.

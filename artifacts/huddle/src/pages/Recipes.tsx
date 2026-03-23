@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Link } from "wouter";
-import { Search, Download, Refrigerator, X, Plus } from "lucide-react";
+import { Search, Download, Refrigerator, X, Plus, Layers } from "lucide-react";
 import { Input, Button } from "@/components/ui";
 import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
 import { Recipe } from "@/lib/types";
@@ -82,8 +82,13 @@ export default function Recipes() {
     }
   };
 
-  // ── filtered / scored lists ──
-  const searchFiltered = recipes.filter(r => {
+  // ── split library into meal recipes and base recipes ──
+  const familyRecipes = recipes.filter(r => !r.family_code || r.family_code === familyGroup?.code);
+  const mealRecipes   = familyRecipes.filter(r => !r.is_component);
+  const baseRecipes   = familyRecipes.filter(r => !!r.is_component);
+
+  // ── filtered / scored lists (meal recipes only) ──
+  const searchFiltered = mealRecipes.filter(r => {
     const cuisine = Array.isArray(r.cuisine) ? r.cuisine[0] : r.cuisine;
     const q = search.toLowerCase();
     return (
@@ -93,8 +98,17 @@ export default function Recipes() {
     );
   });
 
+  const filteredBaseRecipes = baseRecipes.filter(r => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      r.name.toLowerCase().includes(q) ||
+      r.ingredients?.some(i => i.name.toLowerCase().includes(q))
+    );
+  });
+
   const fridgeScored = pantry.length
-    ? recipes
+    ? mealRecipes
         .map(r => ({ recipe: r, ...scoreRecipe(r, pantry) }))
         .filter(r => r.matched > 0)
         .sort((a, b) => b.matched - a.matched || b.matched / (b.total || 1) - a.matched / (a.total || 1))
@@ -294,6 +308,14 @@ export default function Recipes() {
                         );
                       })()}
 
+                      {/* Base recipe indicator */}
+                      {recipe.ingredients?.some(i => i.base_recipe_id) && (
+                        <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary">
+                          <Layers size={10} />
+                          uses base recipe
+                        </div>
+                      )}
+
                       {/* Match badge — fridge mode only */}
                       {score && score.matched > 0 && (
                         <div className="mt-2">
@@ -315,6 +337,67 @@ export default function Recipes() {
                 </Link>
               );
             })}
+          </div>
+        )}
+        {/* Base Recipes section — only in search mode */}
+        {mode === "search" && filteredBaseRecipes.length > 0 && (
+          <div className="mt-8">
+            <div className="flex items-center gap-2 mb-3">
+              <Layers size={15} className="text-primary" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Base Recipes
+              </h2>
+              <span className="text-xs text-muted-foreground/60">({filteredBaseRecipes.length})</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mb-3 -mt-1">
+              Sub-recipes used as ingredients — not included in the meal planner.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              {filteredBaseRecipes.map(recipe => {
+                const cost = estimateRecipeCost(recipe, recipe.servings ?? 4);
+                // How many regular recipes use this base recipe?
+                const usedByCount = mealRecipes.filter(r =>
+                  r.ingredients?.some(ing => ing.base_recipe_id === recipe.id)
+                ).length;
+                return (
+                  <Link key={recipe.id} href={`/recipe/${recipe.id}`}>
+                    <div className="bg-white border border-primary/20 rounded-2xl overflow-hidden flex flex-col h-full active:scale-95 transition-transform cursor-pointer shadow-sm hover:shadow-md">
+                      {/* Emoji / colour header with Layers badge */}
+                      <div
+                        className="w-full aspect-square flex items-center justify-center text-4xl relative"
+                        style={{ backgroundColor: recipe.photo_color || "#f3f4f6" }}
+                      >
+                        {recipe.emoji || "🍲"}
+                        <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                          <Layers size={8} /> base
+                        </span>
+                      </div>
+
+                      <div className="p-3 flex flex-col flex-1">
+                        <h3 className="font-semibold text-sm leading-tight line-clamp-2 flex-1">{recipe.name}</h3>
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          {recipe.cook_time && (
+                            <span className="text-[10px] text-muted-foreground">{recipe.cook_time}m</span>
+                          )}
+                          {usedByCount > 0 && (
+                            <span className="text-[10px] text-primary font-semibold">
+                              used in {usedByCount} recipe{usedByCount !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+                        {cost && (
+                          <div className="mt-2 flex items-center gap-1.5">
+                            <span className="text-[10px] font-semibold text-primary">
+                              {formatCost(cost.perServeUSD, currency)}/serve
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

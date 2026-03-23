@@ -3,6 +3,7 @@ import { useLocation, useParams } from "wouter";
 import {
   ArrowLeft, Clock, Flame, Globe, Leaf, Trash2,
   DollarSign, Users, FileText, ToggleLeft, ToggleRight, Check,
+  Layers, ExternalLink,
 } from "lucide-react";
 import { Button, Badge } from "@/components/ui";
 import { useRecipeStore, useFamilyStore, usePriceStore } from "@/stores/huddle-stores";
@@ -28,6 +29,11 @@ export default function RecipeDetail() {
   const currency = getCurrencyConfig(familyGroup?.country);
   const cost     = estimateRecipeCost(recipe, servings, { userPrices, aiPrices });
 
+  // Map ingredient → base recipe for quick look-up
+  const baseRecipeMap = new Map(
+    recipes.filter(r => r.is_component).map(r => [r.id, r])
+  );
+
   const handleDelete = () => {
     if (confirm("Delete this recipe?")) {
       deleteRecipe(recipe.id);
@@ -49,6 +55,14 @@ export default function RecipeDetail() {
     updateRecipe(recipe.id, { excluded_from_auto: !recipe.excluded_from_auto });
   };
 
+  // Find which regular recipes use this base recipe (shown on base recipe detail pages)
+  const usedByRecipes = recipe.is_component
+    ? recipes.filter(r =>
+        !r.is_component &&
+        r.ingredients?.some(ing => ing.base_recipe_id === recipe.id)
+      )
+    : [];
+
   return (
     <div className="min-h-[100dvh] bg-background pb-28">
       {/* Hero */}
@@ -63,6 +77,14 @@ export default function RecipeDetail() {
           <ArrowLeft size={20} />
         </button>
         {recipe.emoji || "🍲"}
+
+        {/* Base recipe banner */}
+        {recipe.is_component && (
+          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-2 py-2 bg-primary/90 backdrop-blur-sm text-white text-xs font-bold tracking-wide uppercase">
+            <Layers size={13} />
+            Base Recipe
+          </div>
+        )}
       </div>
 
       <div className="p-6 -mt-8 relative z-10 bg-background rounded-t-3xl">
@@ -78,29 +100,59 @@ export default function RecipeDetail() {
           <Badge variant="outline"><Users size={12} className="mr-1" /> {servings} serves</Badge>
         </div>
 
-        {/* Plan inclusion toggle */}
-        <button
-          onClick={toggleExcluded}
-          className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border mb-5 transition-colors ${
-            recipe.excluded_from_auto
-              ? "bg-muted/50 border-border text-muted-foreground"
-              : "bg-primary/5 border-primary/20 text-foreground"
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            {recipe.excluded_from_auto
-              ? <ToggleLeft size={20} className="text-muted-foreground" />
-              : <ToggleRight size={20} className="text-primary" />}
-            <span className="text-sm font-medium">
-              {recipe.excluded_from_auto ? "Excluded from generated plans" : "Included in generated plans"}
+        {/* Plan inclusion toggle — hidden for base recipes (always excluded) */}
+        {!recipe.is_component && (
+          <button
+            onClick={toggleExcluded}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border mb-5 transition-colors ${
+              recipe.excluded_from_auto
+                ? "bg-muted/50 border-border text-muted-foreground"
+                : "bg-primary/5 border-primary/20 text-foreground"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              {recipe.excluded_from_auto
+                ? <ToggleLeft size={20} className="text-muted-foreground" />
+                : <ToggleRight size={20} className="text-primary" />}
+              <span className="text-sm font-medium">
+                {recipe.excluded_from_auto ? "Excluded from generated plans" : "Included in generated plans"}
+              </span>
+            </div>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              recipe.excluded_from_auto ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
+            }`}>
+              {recipe.excluded_from_auto ? "Off" : "On"}
             </span>
+          </button>
+        )}
+
+        {/* Base recipe — "used by" info */}
+        {recipe.is_component && usedByRecipes.length > 0 && (
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 mb-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-primary mb-2">Used in</p>
+            <div className="space-y-1.5">
+              {usedByRecipes.map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => setLocation(`/recipe/${r.id}`)}
+                  className="w-full flex items-center gap-2.5 text-left text-sm font-medium hover:text-primary transition-colors"
+                >
+                  <span>{r.emoji ?? "🍲"}</span>
+                  <span className="flex-1">{r.name}</span>
+                  <ExternalLink size={13} className="text-muted-foreground shrink-0" />
+                </button>
+              ))}
+            </div>
           </div>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-            recipe.excluded_from_auto ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
-          }`}>
-            {recipe.excluded_from_auto ? "Off" : "On"}
-          </span>
-        </button>
+        )}
+
+        {/* Base recipe note — not in planner */}
+        {recipe.is_component && (
+          <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-border bg-muted/40 text-muted-foreground text-sm mb-5">
+            <Layers size={16} className="shrink-0" />
+            <span>This is a base recipe — it won't appear in your meal planner.</span>
+          </div>
+        )}
 
         {/* Macros */}
         {(recipe.protein || recipe.carbs || recipe.fat) && (
@@ -162,12 +214,27 @@ export default function RecipeDetail() {
               Ingredients
             </h3>
             <ul className="space-y-3 bg-white p-5 rounded-2xl border border-border">
-              {recipe.ingredients?.map((ing, i) => (
-                <li key={i} className="flex justify-between items-center text-sm border-b border-border/50 pb-3 last:border-0 last:pb-0">
-                  <span className="font-medium">{ing.name}</span>
-                  <span className="text-muted-foreground">{ing.amount}</span>
-                </li>
-              ))}
+              {recipe.ingredients?.map((ing, i) => {
+                const baseRecipe = ing.base_recipe_id ? baseRecipeMap.get(ing.base_recipe_id) : undefined;
+                return (
+                  <li key={i} className="flex justify-between items-center text-sm border-b border-border/50 pb-3 last:border-0 last:pb-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-medium truncate">{ing.name}</span>
+                      {baseRecipe && (
+                        <button
+                          onClick={() => setLocation(`/recipe/${baseRecipe.id}`)}
+                          title={`View base recipe: ${baseRecipe.name}`}
+                          className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0 hover:bg-primary/20 transition-colors"
+                        >
+                          <Layers size={9} />
+                          base
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-muted-foreground ml-2 shrink-0">{ing.amount}</span>
+                  </li>
+                );
+              })}
             </ul>
           </section>
 

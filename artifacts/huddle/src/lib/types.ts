@@ -25,6 +25,7 @@ export interface Ingredient {
   name: string;
   amount?: string;
   category?: string;
+  base_recipe_id?: string; // links to a base recipe (is_component: true) in the library
 }
 
 export interface Recipe {
@@ -84,6 +85,9 @@ export interface ShoppingItem {
   week_start?: string;
   family_code: string;
   created_at: string;
+  is_base_recipe?: boolean;    // ingredient came from a base recipe in the library
+  base_recipe_id?: string;     // id of the source base recipe
+  base_recipe_name?: string;   // display name of the source base recipe
 }
 
 export interface FamilyMember {
