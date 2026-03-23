@@ -1,12 +1,15 @@
 import { useState, useRef } from "react";
 import { Link } from "wouter";
-import { Search, Download, Refrigerator, X, Plus, Layers } from "lucide-react";
+import {
+  Search, Download, Refrigerator, X, Plus, Layers,
+  ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, Salad,
+} from "lucide-react";
 import { Input, Button } from "@/components/ui";
 import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
 import { Recipe } from "@/lib/types";
 import { estimateRecipeCost, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
 
-// ─── Slot label abbreviations (for compact card chips) ────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const SLOT_SHORT: Record<string, string> = {
   breakfast:       "Breakfast",
@@ -18,13 +21,26 @@ const SLOT_SHORT: Record<string, string> = {
   dessert:         "Dessert",
 };
 
-// ─── Ingredient matching ──────────────────────────────────────────────────────
+const ALL_SLOTS = ["breakfast", "lunch", "dinner", "morning_snack", "afternoon_snack", "night_snack", "dessert"];
+
+type SortKey = "alpha" | "calories" | "cost" | "cook_time" | "protein";
+type SortDir = "asc" | "desc";
+type Mode = "search" | "fridge";
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "alpha",     label: "A–Z" },
+  { key: "calories",  label: "Calories" },
+  { key: "cost",      label: "Cost/serve" },
+  { key: "cook_time", label: "Cook time" },
+  { key: "protein",   label: "Protein" },
+];
+
+// ─── Ingredient matching (fridge mode) ───────────────────────────────────────
 
 function normalize(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
 }
 
-// Split a phrase into meaningful words (3+ chars)
 function words(s: string): string[] {
   return normalize(s).split(/\s+/).filter(w => w.length >= 3);
 }
@@ -33,30 +49,66 @@ function scoreRecipe(recipe: Recipe, pantry: string[]): { matched: number; total
   if (!pantry.length || !recipe.ingredients?.length) {
     return { matched: 0, total: recipe.ingredients?.length ?? 0 };
   }
-
-  // Build a flat set of all significant words from every pantry entry
   const pantryWordSet = new Set(pantry.flatMap(words));
-  // Also keep full normalized phrases for phrase-level matching
   const pantryPhrases = pantry.map(normalize);
-
   let matched = 0;
   for (const ing of recipe.ingredients) {
     const ingNorm  = normalize(ing.name);
     const ingWords = words(ing.name);
-
-    // 1. Any word in the ingredient name matches a pantry word
     const wordMatch   = ingWords.some(w => pantryWordSet.has(w));
-    // 2. Full phrase overlap in either direction ("chicken stock" ↔ "chicken")
     const phraseMatch = pantryPhrases.some(p => ingNorm.includes(p) || p.includes(ingNorm));
-
     if (wordMatch || phraseMatch) matched++;
   }
   return { matched, total: recipe.ingredients.length };
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Sort helpers ─────────────────────────────────────────────────────────────
 
-type Mode = "search" | "fridge";
+function sortRecipes(list: Recipe[], key: SortKey, dir: SortDir, currency: ReturnType<typeof getCurrencyConfig>): Recipe[] {
+  const mul = dir === "asc" ? 1 : -1;
+  return [...list].sort((a, b) => {
+    switch (key) {
+      case "alpha":
+        return mul * a.name.localeCompare(b.name);
+      case "calories":
+        return mul * ((a.calories ?? 0) - (b.calories ?? 0));
+      case "protein":
+        return mul * ((a.protein ?? 0) - (b.protein ?? 0));
+      case "cook_time":
+        return mul * ((a.cook_time ?? 0) - (b.cook_time ?? 0));
+      case "cost": {
+        const ca = estimateRecipeCost(a, a.servings ?? 4)?.perServeUSD ?? 0;
+        const cb = estimateRecipeCost(b, b.servings ?? 4)?.perServeUSD ?? 0;
+        return mul * (ca - cb);
+      }
+      default:
+        return 0;
+    }
+  });
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function SortChip({
+  label, active, dir, onClick,
+}: { label: string; active: boolean; dir: SortDir; onClick: () => void }) {
+  const Icon = active ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border ${
+        active
+          ? "bg-primary text-white border-primary"
+          : "bg-white text-muted-foreground border-border hover:border-primary/40"
+      }`}
+    >
+      {label}
+      <Icon size={11} strokeWidth={active ? 2.5 : 2} />
+    </button>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Recipes() {
   const { recipes } = useRecipeStore();
@@ -66,12 +118,37 @@ export default function Recipes() {
   const [mode, setMode] = useState<Mode>("search");
   const [search, setSearch] = useState("");
 
-  // Fridge mode state
-  const [pantry, setPantry] = useState<string[]>([]);
+  // Filter state
+  const [filterSlot, setFilterSlot] = useState<string | null>(null);
+  const [filterVeg, setFilterVeg]   = useState(false);
+  const [sortKey, setSortKey]       = useState<SortKey | null>(null);
+  const [sortDir, setSortDir]       = useState<SortDir>("asc");
+
+  // Fridge mode
+  const [pantry, setPantry]         = useState<string[]>([]);
   const [fridgeInput, setFridgeInput] = useState("");
   const fridgeRef = useRef<HTMLInputElement>(null);
 
+  const hasActiveFilters = filterSlot !== null || filterVeg || sortKey !== null;
+
   // ── helpers ──
+  const handleSortClick = (key: SortKey) => {
+    if (sortKey === key) {
+      if (sortDir === "asc") setSortDir("desc");
+      else { setSortKey(null); setSortDir("asc"); }
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const clearFilters = () => {
+    setFilterSlot(null);
+    setFilterVeg(false);
+    setSortKey(null);
+    setSortDir("asc");
+  };
+
   const addIngredient = (raw: string) => {
     const val = raw.trim();
     if (!val) return;
@@ -85,40 +162,42 @@ export default function Recipes() {
   const removeIngredient = (idx: number) => setPantry(prev => prev.filter((_, i) => i !== idx));
 
   const handleFridgeKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      addIngredient(fridgeInput);
-    }
-    if (e.key === "Backspace" && !fridgeInput && pantry.length) {
-      setPantry(prev => prev.slice(0, -1));
-    }
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addIngredient(fridgeInput); }
+    if (e.key === "Backspace" && !fridgeInput && pantry.length) setPantry(prev => prev.slice(0, -1));
   };
 
-  // ── split library into meal recipes and base recipes ──
-  const familyRecipes = recipes.filter(r => !r.family_code || r.family_code === familyGroup?.code);
+  // ── library split ──
+  const familyRecipes = recipes.filter(r => !r.family_code || r.family_code === familyGroup?.code || r.family_code === "__seed__");
   const mealRecipes   = familyRecipes.filter(r => !r.is_component);
   const baseRecipes   = familyRecipes.filter(r => !!r.is_component);
 
-  // ── filtered / scored lists (meal recipes only) ──
-  const searchFiltered = mealRecipes.filter(r => {
+  // ── apply search + filters ──
+  let filteredMeal = mealRecipes.filter(r => {
     const cuisine = Array.isArray(r.cuisine) ? r.cuisine[0] : r.cuisine;
     const q = search.toLowerCase();
-    return (
+    const matchesSearch = !search || (
       r.name.toLowerCase().includes(q) ||
       (typeof cuisine === "string" && cuisine.toLowerCase().includes(q)) ||
       r.ingredients?.some(i => i.name.toLowerCase().includes(q))
     );
+    const matchesSlot = !filterSlot || r.meal_slots?.includes(filterSlot);
+    const matchesVeg  = !filterVeg || r.vegetarian;
+    return matchesSearch && matchesSlot && matchesVeg;
   });
 
+  // ── apply sort ──
+  if (sortKey) {
+    filteredMeal = sortRecipes(filteredMeal, sortKey, sortDir, currency);
+  }
+
+  // ── base recipe search filter ──
   const filteredBaseRecipes = baseRecipes.filter(r => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return (
-      r.name.toLowerCase().includes(q) ||
-      r.ingredients?.some(i => i.name.toLowerCase().includes(q))
-    );
+    return r.name.toLowerCase().includes(q) || r.ingredients?.some(i => i.name.toLowerCase().includes(q));
   });
 
+  // ── fridge mode ──
   const fridgeScored = pantry.length
     ? mealRecipes
         .map(r => ({ recipe: r, ...scoreRecipe(r, pantry) }))
@@ -126,7 +205,7 @@ export default function Recipes() {
         .sort((a, b) => b.matched - a.matched || b.matched / (b.total || 1) - a.matched / (a.total || 1))
     : [];
 
-  const displayList = mode === "search" ? searchFiltered : fridgeScored.map(s => s.recipe);
+  const displayList = mode === "search" ? filteredMeal : fridgeScored.map(s => s.recipe);
   const scoreMap    = new Map(fridgeScored.map(s => [s.recipe.id, s]));
 
   return (
@@ -174,6 +253,82 @@ export default function Recipes() {
           />
         )}
 
+        {/* ── Filter & sort row — search mode only ── */}
+        {mode === "search" && (
+          <div className="mt-3 space-y-2">
+
+            {/* Slot chips */}
+            <div className="flex gap-2 overflow-x-auto pb-0.5 no-scrollbar">
+              <button
+                onClick={() => setFilterSlot(null)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border whitespace-nowrap ${
+                  filterSlot === null
+                    ? "bg-primary text-white border-primary"
+                    : "bg-white text-muted-foreground border-border"
+                }`}
+              >
+                All meals
+              </button>
+              {ALL_SLOTS.map(slot => (
+                <button
+                  key={slot}
+                  onClick={() => setFilterSlot(filterSlot === slot ? null : slot)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border whitespace-nowrap ${
+                    filterSlot === slot
+                      ? "bg-primary text-white border-primary"
+                      : "bg-white text-muted-foreground border-border"
+                  }`}
+                >
+                  {SLOT_SHORT[slot]}
+                </button>
+              ))}
+            </div>
+
+            {/* Sort chips + veg toggle */}
+            <div className="flex gap-2 overflow-x-auto pb-0.5 no-scrollbar items-center">
+              {/* Veg toggle */}
+              <button
+                onClick={() => setFilterVeg(v => !v)}
+                className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                  filterVeg
+                    ? "bg-green-600 text-white border-green-600"
+                    : "bg-white text-muted-foreground border-border"
+                }`}
+              >
+                <Salad size={11} />
+                Veg
+              </button>
+
+              {/* Divider */}
+              <div className="h-5 w-px bg-border flex-shrink-0" />
+
+              {/* Sort options */}
+              {SORT_OPTIONS.map(opt => (
+                <SortChip
+                  key={opt.key}
+                  label={opt.label}
+                  active={sortKey === opt.key}
+                  dir={sortDir}
+                  onClick={() => handleSortClick(opt.key)}
+                />
+              ))}
+
+              {/* Clear all */}
+              {hasActiveFilters && (
+                <>
+                  <div className="h-5 w-px bg-border flex-shrink-0" />
+                  <button
+                    onClick={clearFilters}
+                    className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-destructive border border-destructive/30 bg-white whitespace-nowrap"
+                  >
+                    <X size={11} /> Clear
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Ingredient input — fridge mode */}
         {mode === "fridge" && (
           <div className="flex gap-2">
@@ -187,10 +342,7 @@ export default function Recipes() {
                   className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full"
                 >
                   {p}
-                  <button
-                    onClick={e => { e.stopPropagation(); removeIngredient(i); }}
-                    className="hover:text-primary/60 ml-0.5"
-                  >
+                  <button onClick={e => { e.stopPropagation(); removeIngredient(i); }} className="hover:text-primary/60 ml-0.5">
                     <X size={11} strokeWidth={2.5} />
                   </button>
                 </span>
@@ -204,7 +356,6 @@ export default function Recipes() {
                 className="flex-1 min-w-[120px] bg-transparent text-sm outline-none placeholder:text-muted-foreground py-0.5"
               />
             </div>
-            {/* Tap-to-add button — reliable on mobile */}
             <button
               type="button"
               onClick={() => addIngredient(fridgeInput)}
@@ -216,7 +367,7 @@ export default function Recipes() {
           </div>
         )}
 
-        {/* Fridge mode helper */}
+        {/* Fridge helpers */}
         {mode === "fridge" && pantry.length === 0 && (
           <p className="text-xs text-muted-foreground mt-2 px-1">
             Add ingredients you have at home — we'll find matching recipes.
@@ -234,8 +385,18 @@ export default function Recipes() {
       {/* ── Recipe grid ──────────────────────────────────────────────────── */}
       <div className="p-5">
 
+        {/* Result count — search mode */}
+        {mode === "search" && filteredMeal.length > 0 && (
+          <p className="text-xs text-muted-foreground mb-4">
+            {filteredMeal.length} recipe{filteredMeal.length !== 1 ? "s" : ""}
+            {filterSlot ? ` · ${SLOT_SHORT[filterSlot]}` : ""}
+            {filterVeg ? " · Vegetarian" : ""}
+            {sortKey ? ` · Sorted by ${SORT_OPTIONS.find(o => o.key === sortKey)?.label} (${sortDir === "asc" ? "↑" : "↓"})` : ""}
+          </p>
+        )}
+
         {/* Empty state — search mode */}
-        {mode === "search" && searchFiltered.length === 0 && (
+        {mode === "search" && filteredMeal.length === 0 && (
           <div className="text-center py-20 px-6">
             <div className="w-24 h-24 bg-secondary rounded-full flex items-center justify-center mx-auto mb-6">
               <img
@@ -244,13 +405,22 @@ export default function Recipes() {
                 className="w-16 h-16 opacity-50"
               />
             </div>
-            <h3 className="text-xl font-semibold mb-2">{search ? "No matches" : "No recipes yet"}</h3>
+            <h3 className="text-xl font-semibold mb-2">
+              {search || hasActiveFilters ? "No matches" : "No recipes yet"}
+            </h3>
             <p className="text-muted-foreground mb-8">
               {search
                 ? `Nothing matched "${search}". Try a different search.`
+                : hasActiveFilters
+                ? "No recipes match the active filters. Try clearing some."
                 : "Import your favorites or create a new one to get started."}
             </p>
-            {!search && (
+            {hasActiveFilters && (
+              <Button variant="outline" onClick={clearFilters} className="mb-3 w-full">
+                Clear filters
+              </Button>
+            )}
+            {!search && !hasActiveFilters && (
               <Link href="/import">
                 <Button className="w-full">Import Recipe via AI</Button>
               </Link>
@@ -258,7 +428,7 @@ export default function Recipes() {
           </div>
         )}
 
-        {/* Empty state — fridge mode, no ingredients entered yet */}
+        {/* Empty state — fridge mode */}
         {mode === "fridge" && pantry.length === 0 && (
           <div className="text-center py-20 px-6 text-muted-foreground">
             <Refrigerator className="w-14 h-14 mx-auto mb-4 opacity-20" />
@@ -266,8 +436,6 @@ export default function Recipes() {
             <p className="text-sm mt-1">Type ingredients above to find recipes you can make right now.</p>
           </div>
         )}
-
-        {/* Empty state — fridge mode, ingredients entered but no matches */}
         {mode === "fridge" && pantry.length > 0 && fridgeScored.length === 0 && (
           <div className="text-center py-20 px-6 text-muted-foreground">
             <Refrigerator className="w-14 h-14 mx-auto mb-4 opacity-20" />
@@ -284,7 +452,6 @@ export default function Recipes() {
               return (
                 <Link key={recipe.id} href={`/recipe/${recipe.id}`}>
                   <div className="bg-white border border-border rounded-2xl overflow-hidden flex flex-col h-full active:scale-95 transition-transform cursor-pointer shadow-sm hover:shadow-md">
-                    {/* Photo / emoji */}
                     <div
                       className="w-full aspect-square flex items-center justify-center text-4xl"
                       style={{ backgroundColor: recipe.photo_color || "#f3f4f6" }}
@@ -295,11 +462,15 @@ export default function Recipes() {
                     <div className="p-3 flex flex-col flex-1">
                       <h3 className="font-semibold text-sm leading-tight line-clamp-2">{recipe.name}</h3>
 
-                      {/* Meal slot chips */}
+                      {/* Slot chips */}
                       {recipe.meal_slots && recipe.meal_slots.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {recipe.meal_slots.map(slot => (
-                            <span key={slot} className="text-[9px] font-bold uppercase tracking-wide bg-secondary text-muted-foreground px-1.5 py-0.5 rounded-full">
+                            <span key={slot} className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${
+                              filterSlot === slot
+                                ? "bg-primary/15 text-primary"
+                                : "bg-secondary text-muted-foreground"
+                            }`}>
                               {SLOT_SHORT[slot] ?? slot}
                             </span>
                           ))}
@@ -311,17 +482,22 @@ export default function Recipes() {
                           <span className="text-[10px] text-muted-foreground">{recipe.cook_time}m</span>
                         )}
                         {recipe.calories && (
-                          <span className="text-[10px] text-muted-foreground">{recipe.calories} kcal</span>
+                          <span className={`text-[10px] ${sortKey === "calories" ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                            {recipe.calories} kcal
+                          </span>
+                        )}
+                        {recipe.protein && sortKey === "protein" && (
+                          <span className="text-[10px] text-primary font-semibold">{recipe.protein}g protein</span>
                         )}
                       </div>
 
-                      {/* Cost estimate */}
+                      {/* Cost */}
                       {(() => {
                         const cost = estimateRecipeCost(recipe, recipe.servings ?? 4);
                         if (!cost) return null;
                         return (
                           <div className="mt-2 flex items-center gap-1.5">
-                            <span className="text-[10px] font-semibold text-primary">
+                            <span className={`text-[10px] font-semibold ${sortKey === "cost" ? "text-primary" : "text-primary"}`}>
                               {formatCost(cost.perServeUSD, currency)}/serve
                             </span>
                             <span className="text-[10px] text-muted-foreground">
@@ -331,7 +507,7 @@ export default function Recipes() {
                         );
                       })()}
 
-                      {/* Base recipe indicator */}
+                      {/* Base recipe link indicator */}
                       {recipe.ingredients?.some(i => i.base_recipe_id) && (
                         <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary">
                           <Layers size={10} />
@@ -339,7 +515,7 @@ export default function Recipes() {
                         </div>
                       )}
 
-                      {/* Match badge — fridge mode only */}
+                      {/* Match badge — fridge mode */}
                       {score && score.matched > 0 && (
                         <div className="mt-2">
                           <div className="flex items-center justify-between mb-1">
@@ -362,8 +538,9 @@ export default function Recipes() {
             })}
           </div>
         )}
-        {/* Base Recipes section — only in search mode */}
-        {mode === "search" && filteredBaseRecipes.length > 0 && (
+
+        {/* Base Recipes section — search mode only */}
+        {mode === "search" && !filterSlot && filteredBaseRecipes.length > 0 && (
           <div className="mt-8">
             <div className="flex items-center gap-2 mb-3">
               <Layers size={15} className="text-primary" />
@@ -378,14 +555,12 @@ export default function Recipes() {
             <div className="grid grid-cols-2 gap-4">
               {filteredBaseRecipes.map(recipe => {
                 const cost = estimateRecipeCost(recipe, recipe.servings ?? 4);
-                // How many regular recipes use this base recipe?
                 const usedByCount = mealRecipes.filter(r =>
                   r.ingredients?.some(ing => ing.base_recipe_id === recipe.id)
                 ).length;
                 return (
                   <Link key={recipe.id} href={`/recipe/${recipe.id}`}>
                     <div className="bg-white border border-primary/20 rounded-2xl overflow-hidden flex flex-col h-full active:scale-95 transition-transform cursor-pointer shadow-sm hover:shadow-md">
-                      {/* Emoji / colour header with Layers badge */}
                       <div
                         className="w-full aspect-square flex items-center justify-center text-4xl relative"
                         style={{ backgroundColor: recipe.photo_color || "#f3f4f6" }}
@@ -395,7 +570,6 @@ export default function Recipes() {
                           <Layers size={8} /> base
                         </span>
                       </div>
-
                       <div className="p-3 flex flex-col flex-1">
                         <h3 className="font-semibold text-sm leading-tight line-clamp-2 flex-1">{recipe.name}</h3>
                         <div className="mt-2 flex items-center gap-2 flex-wrap">
