@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Settings, Plus, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { Settings, Plus, Sparkles, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays } from "date-fns";
 import { Card, Button } from "@/components/ui";
@@ -208,30 +208,48 @@ export default function Plan() {
                             </span>
 
                             {slotData ? (
-                              // ── Filled slot — tap anywhere to open action sheet ──
-                              <button
-                                className="w-full bg-white border border-border rounded-xl p-3 flex items-center gap-3 shadow-sm hover:border-primary/30 hover:shadow-md transition-all text-left"
-                                onClick={() => openSheet(day, slotKey)}
-                              >
-                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-2xl shrink-0">
-                                  {slotData.emoji ?? "🍽️"}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm text-foreground truncate">{slotData.recipe_name}</p>
-                                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                    {slotData.calories && (
-                                      <span className="text-[10px] text-muted-foreground">{slotData.calories} kcal</span>
-                                    )}
-                                    {slotData.protein && (
-                                      <span className="text-[10px] text-muted-foreground">· {slotData.protein}g protein</span>
-                                    )}
-                                    {slotData.cook_time && (
-                                      <span className="text-[10px] text-muted-foreground">· {slotData.cook_time}m</span>
-                                    )}
+                              // ── Filled slot ──────────────────────────────────────
+                              // Body → view recipe detail (if from library) or open sheet (manual entry)
+                              // Pencil button → opens action sheet
+                              <div className="bg-white border border-border rounded-xl shadow-sm flex items-center overflow-hidden hover:border-primary/20 transition-colors">
+                                {/* Main tappable area */}
+                                <button
+                                  className="flex-1 flex items-center gap-3 p-3 text-left min-w-0"
+                                  onClick={() => {
+                                    if (slotData.recipe_id) {
+                                      setLocation(`/recipe/${slotData.recipe_id}`);
+                                    } else {
+                                      openSheet(day, slotKey);
+                                    }
+                                  }}
+                                >
+                                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-2xl shrink-0">
+                                    {slotData.emoji ?? "🍽️"}
                                   </div>
-                                </div>
-                                <span className="text-[10px] text-primary font-semibold shrink-0">Edit</span>
-                              </button>
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-sm text-foreground truncate">{slotData.recipe_name}</p>
+                                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                      {slotData.calories && (
+                                        <span className="text-[10px] text-muted-foreground">{slotData.calories} kcal</span>
+                                      )}
+                                      {slotData.protein && (
+                                        <span className="text-[10px] text-muted-foreground">· {slotData.protein}g protein</span>
+                                      )}
+                                      {slotData.cook_time && (
+                                        <span className="text-[10px] text-muted-foreground">· {slotData.cook_time}m</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </button>
+
+                                {/* Edit button */}
+                                <button
+                                  className="shrink-0 self-stretch px-3 flex items-center justify-center border-l border-border bg-secondary/50 hover:bg-primary/10 hover:text-primary transition-colors"
+                                  onClick={(e) => { e.stopPropagation(); openSheet(day, slotKey); }}
+                                >
+                                  <Pencil size={15} className="text-muted-foreground hover:text-primary" />
+                                </button>
+                              </div>
                             ) : (
                               // ── Empty slot ──
                               <button

@@ -159,7 +159,7 @@ No markdown, no explanation — raw JSON only.`,
       />
 
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-md bg-white rounded-t-3xl shadow-2xl flex flex-col"
+      <div className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-md bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden"
         style={{ maxHeight: "88dvh" }}
       >
         {/* Handle */}
@@ -184,7 +184,7 @@ No markdown, no explanation — raw JSON only.`,
 
         {/* ── ACTIONS mode (filled slot) ──────────────────────────────────── */}
         {mode === "actions" && existing && (
-          <div className="p-5 space-y-3 overflow-y-auto">
+          <div className="p-5 space-y-3 overflow-y-auto flex-1">
             {/* Current meal summary */}
             <div className="flex items-center gap-3 bg-secondary/50 rounded-2xl p-4">
               <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-2xl shadow-sm shrink-0">
