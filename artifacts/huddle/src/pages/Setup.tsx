@@ -7,11 +7,14 @@ import { useFamilyStore, useRecipeStore } from "@/stores/huddle-stores";
 
 export default function Setup() {
   const [, setLocation] = useLocation();
-  const { setupProfile, createFamily, joinFamily } = useFamilyStore();
+  const { setupProfile, createFamily, joinFamily, profile } = useFamilyStore();
   const { loadSeeds } = useRecipeStore();
-  
-  const [step, setStep] = useState<"name" | "action" | "create" | "join">("name");
-  const [name, setName] = useState("");
+
+  // If the user's name is already known (pre-filled from auth), skip the name step
+  const [step, setStep] = useState<"name" | "action" | "create" | "join">(
+    profile?.name ? "action" : "name"
+  );
+  const [name, setName] = useState(profile?.name ?? "");
   const [familyName, setFamilyName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [loading, setLoading] = useState(false);

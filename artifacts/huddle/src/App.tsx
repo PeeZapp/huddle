@@ -1,7 +1,9 @@
 import { useEffect } from "react";
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppLayout from "@/components/layout/AppLayout";
+import { AuthProvider, useAuth } from "@/context/auth-context";
+import Auth from "@/pages/Auth";
 import Setup from "@/pages/Setup";
 import Plan from "@/pages/Plan";
 import GeneratePlan from "@/pages/GeneratePlan";
@@ -50,10 +52,10 @@ function Router() {
 }
 
 function SeedLoader() {
-  const { profile }           = useFamilyStore();
-  const { familyGroup }       = useFamilyStore();
-  const { loadSeeds }         = useRecipeStore();
-  const { checkAutoRefresh }  = usePriceStore();
+  const { profile }          = useFamilyStore();
+  const { familyGroup }      = useFamilyStore();
+  const { loadSeeds }        = useRecipeStore();
+  const { checkAutoRefresh } = usePriceStore();
 
   useEffect(() => {
     const code = profile?.family_code;
@@ -61,22 +63,67 @@ function SeedLoader() {
   }, [profile?.family_code, loadSeeds]);
 
   useEffect(() => {
-    // Check once on app load whether a monthly price refresh is due
     checkAutoRefresh(familyGroup?.country);
   }, []);
 
   return null;
 }
 
+function AuthGate() {
+  const { user, loading } = useAuth();
+  const { profile, setupProfile } = useFamilyStore();
+  const [, setLocation] = useLocation();
+
+  // Show nothing while Firebase resolves auth state
+  if (loading) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  // Not signed in — show the auth page
+  if (!user) {
+    const handleAuth = (displayName: string | null) => {
+      // Pre-fill profile name from Firebase if not already set
+      if (!profile?.name && displayName) {
+        setupProfile(displayName);
+      }
+    };
+    return <Auth onAuth={handleAuth} />;
+  }
+
+  // Signed in but no family set up — go to setup
+  if (!profile?.family_code) {
+    // Pre-fill name from Firebase user if not set
+    if (!profile?.name && user.displayName) {
+      setupProfile(user.displayName);
+    }
+    return (
+      <AppLayout>
+        <Setup />
+      </AppLayout>
+    );
+  }
+
+  // Fully authenticated + family set up
+  return (
+    <AppLayout>
+      <SeedLoader />
+      <Router />
+    </AppLayout>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-        <SeedLoader />
-        <AppLayout>
-          <Router />
-        </AppLayout>
-      </WouterRouter>
+      <AuthProvider>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <AuthGate />
+        </WouterRouter>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

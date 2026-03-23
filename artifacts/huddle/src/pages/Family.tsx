@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Copy, Users, LogOut, Plus, Pencil, Trash2, Check, X, Globe, DollarSign, ChevronRight } from "lucide-react";
 import { Button, Input, Card, Badge } from "@/components/ui";
 import { useFamilyStore } from "@/stores/huddle-stores";
+import { auth, signOut } from "@/lib/firebase";
 import { FamilyMember } from "@/lib/types";
 import { DIETARY_OPTIONS, getDietaryOption } from "@/lib/dietary";
 import { generateId } from "@/lib/utils";
@@ -412,10 +413,17 @@ export default function Family() {
           </section>
         )}
 
-        {/* Danger zone */}
-        <div className="pt-4">
+        {/* Account */}
+        <div className="pt-4 space-y-2">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => signOut(auth)}
+          >
+            <LogOut className="mr-2 w-4 h-4" /> Sign Out
+          </Button>
           <Button variant="ghost" className="w-full text-destructive hover:bg-destructive/10" onClick={handleLeave}>
-            <LogOut className="mr-2 w-4 h-4" /> Leave Family Group
+            Leave Family Group
           </Button>
         </div>
       </div>
