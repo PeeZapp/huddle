@@ -94,3 +94,33 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+
+### `artifacts/family-plate` (`@workspace/family-plate`) — Huddle App
+
+React Native Expo mobile app — family meal planner. App name: **Huddle**. Primary color: `#639922`.
+
+**Tech:**
+- Expo Router (file-based routing, tabs + modals)
+- Zustand stores with AsyncStorage persistence (keyed by family code `FP-XXXX`)
+- AI via Anthropic Claude (Replit AI Integrations: `EXPO_PUBLIC_AI_BASE_URL` + `EXPO_PUBLIC_AI_API_KEY` exposed in dev script)
+- `@expo/vector-icons` (Feather) — no emojis in UI
+- Inter font family
+
+**Screens:**
+- `app/setup.tsx` — onboarding: create/join family group
+- `app/(tabs)/index.tsx` — Plan tab: weekly meal planner (Mon-Sun, 7 meal slots)
+- `app/(tabs)/shopping.tsx` — Shopping list
+- `app/(tabs)/recipes.tsx` — Recipe library
+- `app/(tabs)/lists.tsx` — Custom family lists
+- `app/(tabs)/more.tsx` — More tab: hub for Nutrition, Family, Import, Generate
+- `app/recipe/[id].tsx` — Recipe detail + edit
+- `app/import-recipe.tsx` — AI recipe import (URL or text)
+- `app/generate.tsx` — AI weekly meal plan generator
+- `app/nutrition.tsx` — Nutrition tracking + food log + goals
+- `app/family.tsx` — Family settings (members, code, country)
+
+**Stores:** `familyStore`, `recipeStore`, `mealPlanStore`, `shoppingStore`, `listsStore`, `calendarStore`, `nutritionStore`
+
+**Meal slots:** breakfast, morning_snack, lunch, afternoon_snack, dinner, night_snack, dessert
+
+**IMPORTANT:** Firebase was removed — it caused a Metro bundler crash (ENOENT on temp directories). Use AsyncStorage for all persistence. Firebase can be re-added only after the Metro watcher issue is resolved (use `watchFolders`/`blockList` in `metro.config.js`).

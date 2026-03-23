@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "FamilyPlate",
-    "slug": "family-plate",
+    "name": "Huddle",
+    "slug": "huddle",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "family-plate",
+    "scheme": "huddle",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
