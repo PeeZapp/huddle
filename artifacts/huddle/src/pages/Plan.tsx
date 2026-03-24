@@ -142,7 +142,7 @@ export default function Plan() {
         </div>
 
         <Link href="/generate">
-          <button className="w-full flex items-center justify-center gap-2 bg-primary text-white font-semibold text-sm rounded-full py-2.5 shadow-sm hover:bg-primary/90 transition-colors">
+          <button className="mt-3 w-full flex items-center justify-center gap-2 bg-primary text-white font-semibold text-sm rounded-full py-2.5 shadow-sm hover:bg-primary/90 transition-colors">
             <Sparkles size={16} />
             Generate Plan
           </button>
