@@ -19,11 +19,39 @@ import {
   doc,
   getDoc,
   setDoc,
+  getDocs,
+  collection,
   onSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { MealPlan, UserProfile, FamilyGroup } from "./types";
+import { MealPlan, UserProfile, FamilyGroup, Recipe } from "./types";
+
+// ── Community recipes ─────────────────────────────────────────────────────────
+// Collection: community_recipes / {recipe_id}
+// Firestore rules must allow: read = any signed-in user, write = any signed-in user.
+
+export async function shareCommunityRecipe(recipe: Recipe): Promise<void> {
+  try {
+    await setDoc(
+      doc(db, "community_recipes", recipe.id),
+      { ...recipe, family_code: "__community__", is_community: true, shared_at: new Date().toISOString() },
+      { merge: true },
+    );
+  } catch (err) {
+    console.warn("[firestore-sync] shareCommunityRecipe failed:", err);
+  }
+}
+
+export async function loadCommunityRecipes(): Promise<Recipe[]> {
+  try {
+    const snap = await getDocs(collection(db, "community_recipes"));
+    return snap.docs.map(d => d.data() as Recipe);
+  } catch (err) {
+    console.warn("[firestore-sync] loadCommunityRecipes failed:", err);
+    return [];
+  }
+}
 
 // ── User profile ──────────────────────────────────────────────────────────────
 

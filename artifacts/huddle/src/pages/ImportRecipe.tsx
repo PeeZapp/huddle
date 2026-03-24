@@ -4,7 +4,7 @@ import {
   ArrowLeft, Link as LinkIcon, FileText, Download,
   AlertCircle, Loader2, CheckCircle2, ShieldCheck, Sparkles,
   Clock, Users, UtensilsCrossed, BookOpen, RotateCcw, Save,
-  Layers, Check,
+  Layers, Check, Globe,
 } from "lucide-react";
 import { Button, Input } from "@/components/ui";
 import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
@@ -269,6 +269,8 @@ export default function ImportRecipe() {
   const [sourceUrl, setSourceUrl]       = useState<string | undefined>();
   // Slot selection: MealSlotKey, or "base" for a component recipe, or null (use AI suggestion)
   const [selectedSlot, setSelectedSlot] = useState<MealSlotKey | "base" | null>(null);
+  // Share with the global community library
+  const [shareWithCommunity, setShareWithCommunity] = useState(false);
 
   const isLoading = phase === "fetching" || phase === "extracting" || phase === "saving";
 
@@ -368,7 +370,7 @@ export default function ImportRecipe() {
   };
 
   // ── Step 2: save (after preview confirmation) ──────────────────────────────
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!previewData || !familyGroup) return;
     setPhase("saving");
     try {
@@ -385,7 +387,19 @@ export default function ImportRecipe() {
         family_code: familyGroup.code,
         imported: true,
         source_url: sourceUrl,
+        is_community: shareWithCommunity || undefined,
       });
+
+      // If user chose to share globally, also push to community Firestore collection
+      if (shareWithCommunity) {
+        try {
+          const { shareCommunityRecipe } = await import("../lib/firestore-sync");
+          await shareCommunityRecipe({ ...recipe, family_code: "__community__", is_community: true });
+        } catch {
+          // community share fail is non-fatal
+        }
+      }
+
       setPhase("done");
       setTimeout(() => setLocation(`/recipe/${recipe.id}`), 500);
     } catch {
@@ -456,6 +470,39 @@ export default function ImportRecipe() {
                 />
               </button>
             </div>
+
+            {/* Community sharing toggle row */}
+            <div className={`flex items-center gap-3 px-4 py-3.5 border-t border-border transition-colors ${shareWithCommunity ? "bg-blue-50" : ""}`}>
+              <Globe size={17} className={`shrink-0 transition-colors ${shareWithCommunity ? "text-blue-600" : "text-muted-foreground"}`} />
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-bold transition-colors ${shareWithCommunity ? "text-blue-600" : ""}`}>Share with community</p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Add to the global library so other Huddle families can discover it. You keep a private copy too.
+                </p>
+              </div>
+              <button
+                onClick={() => setShareWithCommunity(v => !v)}
+                aria-checked={shareWithCommunity}
+                role="switch"
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/50 ${
+                  shareWithCommunity ? "bg-blue-500" : "bg-border"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+                    shareWithCommunity ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {shareWithCommunity && (
+              <div className="px-4 py-2.5 border-t border-border bg-amber-50">
+                <p className="text-[11px] text-amber-800 leading-snug">
+                  Community recipes are not reviewed or moderated by Huddle. By sharing you confirm this recipe is your own or you have permission to share it.
+                </p>
+              </div>
+            )}
           </div>
 
           <RecipePreview recipe={previewData} />

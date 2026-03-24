@@ -53,6 +53,8 @@ export interface Recipe {
   source_url?: string;
   family_code: string;
   created_at: string;
+  is_community?: boolean;
+  shared_at?: string;
 }
 
 export interface MealSlotData {

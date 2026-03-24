@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useParams } from "wouter";
 import {
   ArrowLeft, Clock, Flame, Globe, Leaf, Trash2,
   DollarSign, Users, FileText, ToggleLeft, ToggleRight, Check,
   Layers, ExternalLink, Utensils, Link as LinkIcon,
+  Heart, Share2, MonitorPlay, MonitorOff,
 } from "lucide-react";
 import { Button, Badge } from "@/components/ui";
 import { useRecipeStore, useFamilyStore, usePriceStore } from "@/stores/huddle-stores";
@@ -12,14 +13,72 @@ import { estimateRecipeCost, getCurrencyConfig, formatCost } from "@/lib/recipe-
 export default function RecipeDetail() {
   const { id }                        = useParams();
   const [, setLocation]               = useLocation();
-  const { recipes, updateRecipe, deleteRecipe } = useRecipeStore();
+  const { recipes, updateRecipe, deleteRecipe, toggleFavourite, isFavourite } = useRecipeStore();
   const { familyGroup }               = useFamilyStore();
   const { userPrices, aiPrices }      = usePriceStore();
 
-  const recipe = recipes.find(r => r.id === id);
+  const recipe      = recipes.find(r => r.id === id);
+  const familyCode  = familyGroup?.code ?? "";
+  const fav         = recipe ? isFavourite(familyCode, recipe.id) : false;
 
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft]     = useState("");
+
+  // ── Cook mode (Screen Wake Lock) ──────────────────────────────────────────
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const [cookMode, setCookMode]   = useState(false);
+
+  const toggleCookMode = async () => {
+    if (cookMode) {
+      await wakeLockRef.current?.release();
+      wakeLockRef.current = null;
+      setCookMode(false);
+    } else {
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLockRef.current = await (navigator as Navigator & { wakeLock: { request: (type: string) => Promise<WakeLockSentinel> } }).wakeLock.request("screen");
+          setCookMode(true);
+        }
+      } catch {
+        // Wake lock not supported or denied — fail silently
+      }
+    }
+  };
+
+  useEffect(() => {
+    return () => { wakeLockRef.current?.release(); };
+  }, []);
+
+  // Re-acquire wake lock if page becomes visible again while cook mode is on
+  useEffect(() => {
+    const onVisibility = async () => {
+      if (cookMode && document.visibilityState === "visible" && !wakeLockRef.current) {
+        try {
+          if ("wakeLock" in navigator) {
+            wakeLockRef.current = await (navigator as Navigator & { wakeLock: { request: (type: string) => Promise<WakeLockSentinel> } }).wakeLock.request("screen");
+          }
+        } catch { /* ignore */ }
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [cookMode]);
+
+  // ── Share recipe ──────────────────────────────────────────────────────────
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: recipe?.name ?? "Recipe", url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }
+    } catch { /* user cancelled */ }
+  };
 
   if (!recipe) {
     return <div className="p-6 text-center mt-20">Recipe not found</div>;
@@ -88,8 +147,69 @@ export default function RecipeDetail() {
       </div>
 
       <div className="p-6 -mt-8 relative z-10 bg-background rounded-t-3xl">
-        {/* Title */}
-        <h1 className="text-3xl font-display font-bold leading-tight mb-3">{recipe.name}</h1>
+        {/* Title + action buttons */}
+        <div className="flex items-start gap-3 mb-3">
+          <h1 className="text-3xl font-display font-bold leading-tight flex-1">{recipe.name}</h1>
+          <div className="flex gap-2 shrink-0 pt-1">
+            {/* Favourite */}
+            <button
+              onClick={() => toggleFavourite(familyCode, recipe.id)}
+              title={fav ? "Remove from favourites" : "Add to favourites"}
+              className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all ${
+                fav
+                  ? "bg-rose-500 border-rose-500 text-white shadow-sm"
+                  : "bg-white border-border text-muted-foreground hover:border-rose-300 hover:text-rose-400"
+              }`}
+            >
+              <Heart size={16} fill={fav ? "currentColor" : "none"} strokeWidth={fav ? 0 : 2} />
+            </button>
+
+            {/* Share */}
+            <button
+              onClick={handleShare}
+              title="Share recipe link"
+              className="w-9 h-9 rounded-full flex items-center justify-center border border-border bg-white text-muted-foreground hover:border-primary/40 hover:text-primary transition-all relative"
+            >
+              {copied ? <Check size={15} className="text-primary" /> : <Share2 size={15} />}
+              {copied && (
+                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap pointer-events-none">
+                  Copied!
+                </span>
+              )}
+            </button>
+
+            {/* Cook mode */}
+            <button
+              onClick={toggleCookMode}
+              title={cookMode ? "Turn off cook mode" : "Cook mode (screen stays on)"}
+              className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all ${
+                cookMode
+                  ? "bg-primary border-primary text-white shadow-sm"
+                  : "bg-white border-border text-muted-foreground hover:border-primary/40 hover:text-primary"
+              }`}
+            >
+              {cookMode ? <MonitorOff size={15} /> : <MonitorPlay size={15} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Cook mode banner */}
+        {cookMode && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-xl mb-3 text-sm font-medium text-primary">
+            <MonitorPlay size={14} className="shrink-0" />
+            Cook mode on — screen will stay awake
+          </div>
+        )}
+
+        {/* Community disclaimer */}
+        {recipe.is_community && (
+          <div className="flex items-start gap-2.5 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl mb-3 text-xs text-amber-800">
+            <Users size={14} className="shrink-0 mt-0.5" />
+            <span>
+              <strong>Community recipe</strong> — contributed by another family. Not reviewed or moderated by the Huddle team.
+            </span>
+          </div>
+        )}
 
         {/* Badges */}
         <div className="flex flex-wrap gap-2 mb-3">

@@ -81,10 +81,14 @@ function linkBaseRecipesToLibrary(recipes: Recipe[], baseRecipes: Recipe[]): Rec
 interface RecipeState {
   recipes: Recipe[];
   seedsLoaded: boolean;
+  favourites: Record<string, string[]>;  // familyCode → recipeId[]
   addRecipe: (recipe: Omit<Recipe, "id" | "created_at">) => Recipe;
   updateRecipe: (id: string, updates: Partial<Recipe>) => void;
   deleteRecipe: (id: string) => void;
   loadSeeds: (familyCode: string) => Promise<number>;
+  loadCommunity: () => Promise<void>;
+  toggleFavourite: (familyCode: string, recipeId: string) => void;
+  isFavourite: (familyCode: string, recipeId: string) => boolean;
 }
 
 export const useRecipeStore = create<RecipeState>()(
@@ -92,6 +96,7 @@ export const useRecipeStore = create<RecipeState>()(
     (set, get) => ({
       recipes: [],
       seedsLoaded: false,
+      favourites: {},
       addRecipe: (data) => {
         const recipe: Recipe = { ...data, id: generateId(), created_at: new Date().toISOString() };
         let updatedLibrary = [...get().recipes, recipe];
@@ -157,6 +162,31 @@ export const useRecipeStore = create<RecipeState>()(
         } catch {
           return 0;
         }
+      },
+      loadCommunity: async () => {
+        try {
+          const { loadCommunityRecipes } = await import("../lib/firestore-sync");
+          const communityRecipes = await loadCommunityRecipes();
+          if (!communityRecipes.length) return;
+          const existing = get().recipes;
+          const existingIds = new Set(existing.map((r) => r.id));
+          const newOnes = communityRecipes.filter(r => !existingIds.has(r.id));
+          if (newOnes.length > 0) {
+            set({ recipes: [...existing, ...newOnes] });
+          }
+        } catch {
+          // community load failing silently is fine
+        }
+      },
+      toggleFavourite: (familyCode, recipeId) => {
+        const current = get().favourites[familyCode] ?? [];
+        const updated = current.includes(recipeId)
+          ? current.filter(id => id !== recipeId)
+          : [...current, recipeId];
+        set({ favourites: { ...get().favourites, [familyCode]: updated } });
+      },
+      isFavourite: (familyCode, recipeId) => {
+        return (get().favourites[familyCode] ?? []).includes(recipeId);
       },
     }),
     { name: "huddle-recipes" }

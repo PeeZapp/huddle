@@ -3,11 +3,16 @@ import { Link } from "wouter";
 import {
   Search, Download, Refrigerator, X, Plus, Layers,
   ArrowUpDown, ArrowUp, ArrowDown, Salad, ArrowUp as ScrollTop,
+  Heart, Users,
 } from "lucide-react";
 import { Input, Button } from "@/components/ui";
 import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
 import { Recipe } from "@/lib/types";
 import { estimateRecipeCost, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
+
+// ─── Module-level fridge state (persists across route changes) ─────────────────
+let _fridgeMode: "search" | "fridge" = "search";
+let _fridgePantry: string[] = [];
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -141,21 +146,31 @@ function SortChip({ label, active, dir, onClick }: { label: string; active: bool
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Recipes() {
-  const { recipes }     = useRecipeStore();
+  const { recipes, favourites, toggleFavourite, loadCommunity } = useRecipeStore();
   const { familyGroup } = useFamilyStore();
   const currency        = getCurrencyConfig(familyGroup?.country);
+  const familyCode      = familyGroup?.code ?? "";
+  const myFavs          = favourites[familyCode] ?? [];
 
-  const [mode, setMode]         = useState<Mode>("search");
+  const [mode, setMode]         = useState<Mode>(_fridgeMode);
   const [search, setSearch]     = useState("");
   const [filterSlot, setFilterSlot] = useState<string | null>(null);
   const [filterVeg, setFilterVeg]   = useState(false);
+  const [filterFavs, setFilterFavs] = useState(false);
   const [sortKey, setSortKey]       = useState<SortKey | null>(null);
   const [sortDir, setSortDir]       = useState<SortDir>("asc");
 
-  // Fridge mode
-  const [pantry, setPantry]           = useState<string[]>([]);
+  // Fridge mode — seed from module-level, persist back on change
+  const [pantry, setPantry]           = useState<string[]>(_fridgePantry);
   const [fridgeInput, setFridgeInput] = useState("");
   const fridgeRef = useRef<HTMLInputElement>(null);
+
+  // Persist fridge state to module-level vars whenever they change
+  useEffect(() => { _fridgeMode = mode; }, [mode]);
+  useEffect(() => { _fridgePantry = pantry; }, [pantry]);
+
+  // Load community recipes once on mount
+  useEffect(() => { loadCommunity(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scroll-to-top
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -170,7 +185,7 @@ export default function Recipes() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const hasActiveFilters = filterSlot !== null || filterVeg || sortKey !== null;
+  const hasActiveFilters = filterSlot !== null || filterVeg || sortKey !== null || filterFavs;
 
   const handleSortClick = (key: SortKey) => {
     if (sortKey === key) {
@@ -185,6 +200,7 @@ export default function Recipes() {
   const clearFilters = () => {
     setFilterSlot(null);
     setFilterVeg(false);
+    setFilterFavs(false);
     setSortKey(null);
     setSortDir("asc");
   };
@@ -206,8 +222,13 @@ export default function Recipes() {
     if (e.key === "Backspace" && !fridgeInput && pantry.length) setPantry(prev => prev.slice(0, -1));
   };
 
-  // ── Library split ──
-  const familyRecipes = recipes.filter(r => !r.family_code || r.family_code === familyGroup?.code || r.family_code === "__seed__");
+  // ── Library split — includes community recipes (family_code === "__community__") ──
+  const familyRecipes = recipes.filter(r =>
+    !r.family_code ||
+    r.family_code === familyGroup?.code ||
+    r.family_code === "__seed__" ||
+    r.family_code === "__community__"
+  );
   const mealRecipes   = familyRecipes.filter(r => !r.is_component);
   const baseRecipes   = familyRecipes.filter(r => !!r.is_component);
 
@@ -229,7 +250,8 @@ export default function Recipes() {
       (typeof cuisine === "string" && cuisine.toLowerCase().includes(q)) ||
       r.ingredients?.some(i => i.name.toLowerCase().includes(q))
     );
-    return matchesSearch && slotMatches(r) && (!filterVeg || r.vegetarian);
+    const matchesFav = !filterFavs || myFavs.includes(r.id);
+    return matchesSearch && slotMatches(r) && (!filterVeg || r.vegetarian) && matchesFav;
   });
 
   if (sortKey) filteredMeal = sortRecipes(filteredMeal, sortKey, sortDir, currency);
@@ -341,7 +363,7 @@ export default function Recipes() {
               ))}
             </div>
 
-            {/* Row 2 — Veg toggle + sort chips (wrap, no scroll) */}
+            {/* Row 2 — Veg toggle + favourites + sort chips (wrap, no scroll) */}
             <div className="flex flex-wrap gap-1.5 items-center">
               {/* Veg toggle */}
               <button
@@ -354,6 +376,24 @@ export default function Recipes() {
               >
                 <Salad size={11} />
                 Veg only
+              </button>
+
+              {/* Favourites toggle */}
+              <button
+                onClick={() => setFilterFavs(v => !v)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                  filterFavs
+                    ? "bg-rose-500 text-white border-rose-500"
+                    : "bg-white text-muted-foreground border-border hover:border-rose-300"
+                }`}
+              >
+                <Heart size={11} fill={filterFavs ? "currentColor" : "none"} />
+                Favourites
+                {myFavs.length > 0 && !filterFavs && (
+                  <span className="ml-0.5 bg-rose-100 text-rose-600 rounded-full px-1.5 py-0 text-[9px] font-bold leading-4">
+                    {myFavs.length}
+                  </span>
+                )}
               </button>
 
               <div className="h-4 w-px bg-border flex-shrink-0" />
@@ -495,14 +535,31 @@ export default function Recipes() {
             {displayList.map(recipe => {
               const score  = scoreMap.get(recipe.id);
               const badges = cardBadges(recipe.meal_slots ?? []);
+              const isFav  = myFavs.includes(recipe.id);
               return (
                 <Link key={recipe.id} href={`/recipe/${recipe.id}`}>
                   <div className="bg-white border border-border rounded-2xl overflow-hidden flex flex-col h-full active:scale-95 transition-transform cursor-pointer shadow-sm hover:shadow-md">
                     <div
-                      className="w-full aspect-square flex items-center justify-center text-4xl"
+                      className="w-full aspect-square flex items-center justify-center text-4xl relative"
                       style={{ backgroundColor: recipe.photo_color || "#f3f4f6" }}
                     >
                       {recipe.emoji || "🍲"}
+                      {/* Favourite button */}
+                      <button
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); toggleFavourite(familyCode, recipe.id); }}
+                        className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                          isFav ? "bg-rose-500 text-white shadow" : "bg-white/70 backdrop-blur-sm text-rose-400 hover:bg-white"
+                        }`}
+                      >
+                        <Heart size={13} fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+                      </button>
+                      {/* Community badge */}
+                      {recipe.is_community && (
+                        <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 bg-black/60 backdrop-blur-sm text-white rounded-full px-1.5 py-0.5">
+                          <Users size={9} />
+                          <span className="text-[9px] font-bold">Community</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-3 flex flex-col flex-1">
