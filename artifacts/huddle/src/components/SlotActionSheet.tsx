@@ -58,19 +58,33 @@ export default function SlotActionSheet({
   const [estimatedNutrition, setEstimated]  = useState<Partial<MealSlotData> | null>(null);
   const [estimateError, setEstimateError]   = useState("");
 
-  // Reset state on open/close + lock body scroll while sheet is open
+  // Track whether the sheet was already open so we only reset state on the
+  // closed→open transition, NOT every time `existing` gets a new reference
+  // from a Zustand/Firestore re-render (which was causing the library view
+  // to flash then snap back to "actions").
+  const wasOpenRef = useRef(false);
+
   useEffect(() => {
-    if (open) {
+    if (!open) {
+      wasOpenRef.current = false;
+      return;
+    }
+
+    // Lock body scroll while sheet is open
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    // Only reset internal state on the closed→open transition
+    if (!wasOpenRef.current) {
+      wasOpenRef.current = true;
       setMode(existing ? "actions" : "library");
       setQuery("");
       setManualText("");
       setEstimated(null);
       setEstimateError("");
-      // Prevent the background page from scrolling
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = prev; };
     }
+
+    return () => { document.body.style.overflow = prev; };
   }, [open, existing]);
 
   // Focus search input when switching to library
