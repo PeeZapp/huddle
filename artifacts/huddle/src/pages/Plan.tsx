@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Settings, Plus, Sparkles, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays } from "date-fns";
-import { Card, Button } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { useFamilyStore, useMealPlanStore, useRecipeStore } from "@/stores/huddle-stores";
 import { getWeekStart } from "@/lib/utils";
 import { DAYS, DAY_LABELS, MEAL_SLOTS, Day, MealSlotKey, MealSlotData } from "@/lib/types";
@@ -140,6 +140,13 @@ export default function Plan() {
             <ChevronRight size={20} />
           </button>
         </div>
+
+        <Link href="/generate">
+          <button className="w-full flex items-center justify-center gap-2 bg-primary text-white font-semibold text-sm rounded-full py-2.5 shadow-sm hover:bg-primary/90 transition-colors">
+            <Sparkles size={16} />
+            Generate Plan
+          </button>
+        </Link>
       </header>
 
       <div className="p-6 space-y-4">
@@ -270,18 +277,6 @@ export default function Plan() {
             </Card>
           );
         })}
-      </div>
-
-      {/* Auto-fill FAB */}
-      <div className="fixed bottom-20 right-6 z-30">
-        <Link href="/generate">
-          <Button
-            size="icon"
-            className="w-14 h-14 rounded-full shadow-xl shadow-primary/30 bg-gradient-to-r from-primary to-primary/80"
-          >
-            <Sparkles size={24} className="text-white" />
-          </Button>
-        </Link>
       </div>
 
       {/* Slot action sheet */}
