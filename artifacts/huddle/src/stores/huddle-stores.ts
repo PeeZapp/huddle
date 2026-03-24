@@ -167,12 +167,15 @@ interface MealPlanState {
   setSlot: (weekStart: string, familyCode: string, day: Day, slot: MealSlotKey, data: MealSlotData | null) => void;
   setActiveSlots: (weekStart: string, familyCode: string, slots: MealSlotKey[]) => void;
   clearWeek: (weekStart: string) => void;
+  /** Internal — called by useMealPlanSync to apply remote Firestore data */
+  _setPlansFromRemote: (plans: Record<string, MealPlan>) => void;
 }
 
 export const useMealPlanStore = create<MealPlanState>()(
   persist(
     (set, get) => ({
       plans: {},
+      _setPlansFromRemote: (plans) => set({ plans }),
       getPlan: (weekStart, familyCode) => {
         const existing = get().plans[weekStart];
         if (existing) return existing;

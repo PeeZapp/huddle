@@ -16,6 +16,7 @@ import Lists from "@/pages/Lists";
 import Family from "@/pages/Family";
 import PriceSettings from "@/pages/PriceSettings";
 import { useFamilyStore, useRecipeStore, usePriceStore } from "@/stores/huddle-stores";
+import { useMealPlanSync } from "@/hooks/useMealPlanSync";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,10 +53,9 @@ function Router() {
 }
 
 function SeedLoader() {
-  const { profile }          = useFamilyStore();
-  const { familyGroup }      = useFamilyStore();
-  const { loadSeeds }        = useRecipeStore();
-  const { checkAutoRefresh } = usePriceStore();
+  const { profile, familyGroup } = useFamilyStore();
+  const { loadSeeds }            = useRecipeStore();
+  const { checkAutoRefresh }     = usePriceStore();
 
   useEffect(() => {
     const code = profile?.family_code;
@@ -65,6 +65,9 @@ function SeedLoader() {
   useEffect(() => {
     checkAutoRefresh(familyGroup?.country);
   }, []);
+
+  // Sync meal plans to/from Firestore, scoped to this family group's code
+  useMealPlanSync(profile?.family_code);
 
   return null;
 }
