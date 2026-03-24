@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Settings, Plus, Sparkles, ChevronLeft, ChevronRight, Pencil, ShoppingCart } from "lucide-react";
+import { Plus, Sparkles, ChevronLeft, ChevronRight, Pencil, ShoppingCart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays } from "date-fns";
 import { Card } from "@/components/ui";
@@ -123,11 +123,6 @@ export default function Plan() {
             </p>
             <h1 className="text-3xl font-display font-bold text-foreground">Weekly Plan</h1>
           </div>
-          <Link href="/family">
-            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center cursor-pointer hover:bg-secondary/80 transition-colors">
-              <Settings size={20} />
-            </div>
-          </Link>
         </div>
 
         <div className="flex items-center justify-between bg-background rounded-xl p-1 border border-border">
