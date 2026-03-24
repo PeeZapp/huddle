@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, Plus, Trash2, Wand2, ShoppingCart, Layers, Info, ChevronDown, ChevronUp, ArrowUp, X } from "lucide-react";
+import { Check, Plus, Trash2, Wand2, ShoppingCart, Layers, Info, ChevronDown, ChevronUp, ArrowUp, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button, Input } from "@/components/ui";
 import {
@@ -9,7 +9,7 @@ import {
 import { getWeekStart } from "@/lib/utils";
 import { ShoppingItem } from "@/lib/types";
 import { estimateIngredientCostUSD, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addDays, addWeeks, subWeeks } from "date-fns";
 
 // ─── Category config ─────────────────────────────────────────────────────────
 
@@ -239,6 +239,13 @@ export default function Shopping() {
     setLocation(`/recipe/${recipeId}?from=shopping`);
   };
 
+  const navigateWeek = (dir: "prev" | "next") => {
+    const base = parseISO(weekStart);
+    const next = dir === "next" ? addWeeks(base, 1) : subWeeks(base, 1);
+    setSelectedWeek(format(next, "yyyy-MM-dd"));
+    setShowSyncConfirm(false);
+  };
+
   const activeItems  = items.filter(i => i.family_code === familyGroup?.code && !i.checked);
   const checkedItems = items.filter(i => i.family_code === familyGroup?.code && i.checked);
 
@@ -266,21 +273,14 @@ export default function Shopping() {
     <div className="flex flex-col min-h-full pb-24">
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <header className="px-6 pt-12 pb-6 bg-white sticky top-0 z-20 border-b border-border/50">
-        <div className="flex justify-between items-end">
+      <header className="px-6 pt-12 pb-4 bg-white sticky top-0 z-20 border-b border-border/50">
+        {/* Row 1: title + trash */}
+        <div className="flex justify-between items-center mb-4">
           <div>
-            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">Shopping List</p>
+            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Shopping List</p>
             <h1 className="text-3xl font-display font-bold">Groceries</h1>
-            {weekLabel && (
-              <p className="text-xs text-muted-foreground mt-0.5">Week of {weekLabel}</p>
-            )}
           </div>
           <div className="flex items-center gap-2">
-            {!showSyncConfirm && (
-              <Button variant="outline" size="sm" onClick={handleSyncPlan} className="gap-2 h-9 text-xs">
-                <Wand2 size={14} /> Sync Plan
-              </Button>
-            )}
             {!isEmpty && !showClearConfirm && (
               <button
                 onClick={() => setShowClearConfirm(true)}
@@ -293,10 +293,7 @@ export default function Shopping() {
             {showClearConfirm && (
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => {
-                    clearAll(familyGroup!.code);
-                    setShowClearConfirm(false);
-                  }}
+                  onClick={() => { clearAll(familyGroup!.code); setShowClearConfirm(false); }}
                   className="h-9 px-3 rounded-xl bg-destructive text-white text-xs font-semibold hover:bg-destructive/90 transition-colors"
                 >
                   Clear all
@@ -311,6 +308,24 @@ export default function Shopping() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Row 2: week navigator + Sync Plan */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center justify-between bg-background rounded-xl p-1 border border-border">
+            <button onClick={() => navigateWeek("prev")} className="p-2 hover:bg-white rounded-lg transition">
+              <ChevronLeft size={20} />
+            </button>
+            <span className="font-semibold text-sm">{weekLabel}</span>
+            <button onClick={() => navigateWeek("next")} className="p-2 hover:bg-white rounded-lg transition">
+              <ChevronRight size={20} />
+            </button>
+          </div>
+          {!showSyncConfirm && (
+            <Button variant="outline" size="sm" onClick={handleSyncPlan} className="gap-1.5 h-9 text-xs shrink-0">
+              <Wand2 size={13} /> Sync
+            </Button>
+          )}
         </div>
 
         {/* Sync confirmation banner */}
