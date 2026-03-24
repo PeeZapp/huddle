@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppLayout from "@/components/layout/AppLayout";
@@ -73,20 +73,33 @@ function SeedLoader() {
   // Sync meal plans to/from Firestore, scoped to this family group's code
   useMealPlanSync(profile?.family_code);
 
-  // Auto-save profile + family group to Firestore whenever they change.
-  // Debounced so rapid changes (e.g. during setup) don't hammer the API.
-  // Skip while profileLoading — that's when we're applying remote data, not local changes.
+  // Keep a ref so the save effect can read `profileLoading` without it being
+  // a reactive dependency.  This prevents the echo-write that would otherwise
+  // happen when `profileLoading` flips false after a remote profile load —
+  // the effect should only fire when profile/familyGroup change from a user
+  // action, not when the loading flag settles.
+  const profileLoadingRef = useRef(profileLoading);
+  profileLoadingRef.current = profileLoading;
+
+  const userRef = useRef(user);
+  userRef.current = user;
+
   useEffect(() => {
-    if (!user || profileLoading || !profile) return;
+    // Skip if we're in the middle of loading the remote profile, or if
+    // there's nothing to save yet.
+    if (profileLoadingRef.current || !userRef.current || !profile) return;
+
     const timer = setTimeout(() => {
-      saveUserProfile(user.uid, {
+      saveUserProfile(userRef.current!.uid, {
         profile,
         familyGroup: familyGroup ?? null,
         updated_at: new Date().toISOString(),
       });
     }, PROFILE_SAVE_DEBOUNCE);
     return () => clearTimeout(timer);
-  }, [user, profile, familyGroup, profileLoading]);
+    // Only profile and familyGroup are reactive deps — changes to user or
+    // profileLoading alone do not trigger a save.
+  }, [profile, familyGroup]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return null;
 }
