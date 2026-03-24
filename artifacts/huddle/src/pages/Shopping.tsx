@@ -190,7 +190,7 @@ export default function Shopping() {
   const currency           = getCurrencyConfig(familyGroup?.country);
 
   const {
-    items, addItem, toggleItem, deleteItem, clearChecked, clearAll, generateFromPlan,
+    items, addItem, toggleItem, deleteItem, clearChecked, clearAll, clearWeek, generateFromPlan,
     selectedWeekStart, setSelectedWeek,
   } = useShoppingStore();
   const { getPlan }  = useMealPlanStore();
@@ -216,12 +216,12 @@ export default function Shopping() {
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.trim()) return;
-    addItem({ name: newItem.trim(), category: newCategory, family_code: familyGroup!.code });
+    addItem({ name: newItem.trim(), category: newCategory, family_code: familyGroup!.code, week_start: weekStart });
     setNewItem("");
   };
 
   const doSync = (replace: boolean) => {
-    if (replace) clearAll(familyGroup!.code);
+    if (replace) clearWeek(familyGroup!.code, weekStart);
     const plan = getPlan(weekStart, familyGroup!.code);
     generateFromPlan(plan, recipes);
     setShowSyncConfirm(false);
@@ -246,8 +246,16 @@ export default function Shopping() {
     setShowSyncConfirm(false);
   };
 
-  const activeItems  = items.filter(i => i.family_code === familyGroup?.code && !i.checked);
-  const checkedItems = items.filter(i => i.family_code === familyGroup?.code && i.checked);
+  // Only show items that belong to the currently-viewed week (or items with no
+  // week stamp, which can't exist from normal usage but are a safe fallback).
+  const activeItems  = items.filter(i =>
+    i.family_code === familyGroup?.code && !i.checked &&
+    (!i.week_start || i.week_start === weekStart)
+  );
+  const checkedItems = items.filter(i =>
+    i.family_code === familyGroup?.code && i.checked &&
+    (!i.week_start || i.week_start === weekStart)
+  );
 
   const grouped = groupByCategory(activeItems);
   const isEmpty  = activeItems.length === 0 && checkedItems.length === 0;
@@ -293,7 +301,7 @@ export default function Shopping() {
             {showClearConfirm && (
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => { clearAll(familyGroup!.code); setShowClearConfirm(false); }}
+                  onClick={() => { clearWeek(familyGroup!.code, weekStart); setShowClearConfirm(false); }}
                   className="h-9 px-3 rounded-xl bg-destructive text-white text-xs font-semibold hover:bg-destructive/90 transition-colors"
                 >
                   Clear all

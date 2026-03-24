@@ -228,6 +228,7 @@ interface ShoppingState {
   deleteItem: (id: string) => void;
   clearChecked: (familyCode: string) => void;
   clearAll: (familyCode: string) => void;
+  clearWeek: (familyCode: string, weekStart: string) => void;
   generateFromPlan: (plan: MealPlan, recipes: Recipe[]) => void;
   setSelectedWeek: (weekStart: string) => void;
 }
@@ -243,6 +244,7 @@ export const useShoppingStore = create<ShoppingState>()(
       deleteItem: (id) => set({ items: get().items.filter((i) => i.id !== id) }),
       clearChecked: (fc) => set({ items: get().items.filter((i) => i.family_code !== fc || !i.checked) }),
       clearAll: (fc) => set({ items: get().items.filter((i) => i.family_code !== fc) }),
+      clearWeek: (fc, ws) => set({ items: get().items.filter((i) => i.family_code !== fc || i.week_start !== ws) }),
       generateFromPlan: (plan, recipes) => {
         // Build a map of base-recipe id → Recipe for quick lookup
         const baseRecipeMap = new Map(recipes.filter(r => r.is_component).map(r => [r.id, r]));
