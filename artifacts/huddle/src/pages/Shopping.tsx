@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, Plus, Trash2, Wand2, ShoppingCart, Layers, Info, ChevronDown, ChevronUp, ArrowUp } from "lucide-react";
+import { Check, Plus, Trash2, Wand2, ShoppingCart, Layers, Info, ChevronDown, ChevronUp, ArrowUp, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button, Input } from "@/components/ui";
 import {
@@ -190,7 +190,7 @@ export default function Shopping() {
   const currency           = getCurrencyConfig(familyGroup?.country);
 
   const {
-    items, addItem, toggleItem, deleteItem, clearChecked, generateFromPlan,
+    items, addItem, toggleItem, deleteItem, clearChecked, clearAll, generateFromPlan,
     selectedWeekStart, setSelectedWeek,
   } = useShoppingStore();
   const { getPlan }  = useMealPlanStore();
@@ -200,7 +200,8 @@ export default function Shopping() {
   const [newCategory, setNewCategory]   = useState("Other");
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [showCostInfo, setShowCostInfo] = useState(false);
-  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showScrollTop, setShowScrollTop]     = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 300);
@@ -263,9 +264,40 @@ export default function Shopping() {
               <p className="text-xs text-muted-foreground mt-0.5">Week of {weekLabel}</p>
             )}
           </div>
-          <Button variant="outline" size="sm" onClick={handleSyncPlan} className="gap-2 h-9 text-xs">
-            <Wand2 size={14} /> Sync Plan
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleSyncPlan} className="gap-2 h-9 text-xs">
+              <Wand2 size={14} /> Sync Plan
+            </Button>
+            {!isEmpty && !showClearConfirm && (
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                className="w-9 h-9 flex items-center justify-center rounded-xl border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
+                aria-label="Clear list"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+            {showClearConfirm && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => {
+                    clearAll(familyGroup!.code);
+                    setShowClearConfirm(false);
+                  }}
+                  className="h-9 px-3 rounded-xl bg-destructive text-white text-xs font-semibold hover:bg-destructive/90 transition-colors"
+                >
+                  Clear all
+                </button>
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-secondary transition-colors"
+                  aria-label="Cancel"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
