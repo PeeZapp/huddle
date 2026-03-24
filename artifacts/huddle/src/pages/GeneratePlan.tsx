@@ -18,15 +18,23 @@ const DAY_SHORT: Record<string, string> = {
 };
 
 export default function GeneratePlan() {
-  const [, setLocation]       = useLocation();
+  const [, setLocation] = useLocation();
   const { familyGroup }       = useFamilyStore();
   const { getPlan, setSlot, setActiveSlots } = useMealPlanStore();
   const { goals }             = useNutritionStore();
   const { recipes }           = useRecipeStore();
 
-  const currency  = getCurrencyConfig(familyGroup?.country);
-  const weekStart = getWeekStart();
-  const plan      = getPlan(weekStart, familyGroup?.code || "");
+  const currency = getCurrencyConfig(familyGroup?.country);
+
+  // Read the target week from the URL query param (?week=YYYY-MM-DD).
+  // Falls back to the current week so the page still works when accessed directly.
+  const weekStart = (() => {
+    const search = typeof window !== "undefined" ? window.location.search : "";
+    const param  = new URLSearchParams(search).get("week");
+    return param ?? getWeekStart();
+  })();
+
+  const plan = getPlan(weekStart, familyGroup?.code || "");
 
   // ── Slot selection ───────────────────────────────────────────────────────
   const [selectedSlots, setSelectedSlots] = useState<Set<MealSlotKey>>(

@@ -143,7 +143,7 @@ export default function Plan() {
         </div>
 
         <div className="mt-3 flex gap-2">
-          <Link href="/generate" className="flex-1">
+          <Link href={`/generate?week=${weekStart}`} className="flex-1">
             <button className="w-full flex items-center justify-center gap-2 bg-primary text-white font-semibold text-sm rounded-full py-2.5 shadow-sm hover:bg-primary/90 transition-colors">
               <Sparkles size={16} />
               Generate Plan
