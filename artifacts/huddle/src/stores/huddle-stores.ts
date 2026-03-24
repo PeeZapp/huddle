@@ -181,7 +181,15 @@ export const useMealPlanStore = create<MealPlanState>()(
       _setPlansFromRemote: (plans) => set({ plans }),
       getPlan: (weekStart, familyCode) => {
         const existing = get().plans[weekStart];
-        if (existing) return existing;
+        if (existing) {
+          // Guard: ensure the returned plan's own week_start matches the key
+          // (stale data from Firestore can sometimes have a mismatched field).
+          if (existing.week_start !== weekStart) {
+            console.warn("[getPlan] week_start mismatch – key:", weekStart, "plan.week_start:", existing.week_start, "– correcting");
+            return { ...existing, week_start: weekStart };
+          }
+          return existing;
+        }
         const newPlan: MealPlan = {
           id: generateId(), week_start: weekStart, family_code: familyCode,
           active_slots: ["breakfast", "lunch", "dinner"], slots: {},

@@ -223,6 +223,15 @@ export default function Shopping() {
   const doSync = (replace: boolean) => {
     if (replace) clearWeek(familyGroup!.code, weekStart);
     const plan = getPlan(weekStart, familyGroup!.code);
+    console.log("[Sync] weekStart used:", weekStart);
+    console.log("[Sync] plan.week_start:", plan.week_start);
+    console.log("[Sync] slots:", JSON.stringify(plan.slots, null, 2));
+    const slotRecipes = Object.entries(plan.slots).map(([key, slot]) => ({
+      slot: key,
+      recipe_id: slot.recipe_id,
+      recipe_name: recipes.find(r => r.id === slot.recipe_id)?.name ?? "??",
+    }));
+    console.log("[Sync] recipes in plan:", JSON.stringify(slotRecipes, null, 2));
     generateFromPlan(plan, recipes);
     setShowSyncConfirm(false);
   };
