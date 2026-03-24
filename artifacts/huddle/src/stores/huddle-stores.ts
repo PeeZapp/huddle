@@ -17,6 +17,8 @@ interface FamilyState {
   joinFamily: (code: string) => void;
   leaveFamily: () => void;
   updateFamily: (updates: Partial<FamilyGroup>) => void;
+  /** Internal — called by auth-context to restore profile from Firestore on sign-in */
+  _applyRemoteProfile: (profile: UserProfile, familyGroup: FamilyGroup | null) => void;
 }
 
 export const useFamilyStore = create<FamilyState>()(
@@ -24,6 +26,7 @@ export const useFamilyStore = create<FamilyState>()(
     (set, get) => ({
       profile: null,
       familyGroup: null,
+      _applyRemoteProfile: (profile, familyGroup) => set({ profile, familyGroup }),
       setupProfile: (name) => set({ profile: { id: generateId(), name, created_at: new Date().toISOString() } }),
       createFamily: (name) => {
         const code = generateFamilyCode();

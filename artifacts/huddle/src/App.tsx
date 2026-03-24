@@ -17,6 +17,7 @@ import Family from "@/pages/Family";
 import PriceSettings from "@/pages/PriceSettings";
 import { useFamilyStore, useRecipeStore, usePriceStore } from "@/stores/huddle-stores";
 import { useMealPlanSync } from "@/hooks/useMealPlanSync";
+import { saveUserProfile } from "@/lib/firestore-sync";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,10 +53,13 @@ function Router() {
   );
 }
 
+const PROFILE_SAVE_DEBOUNCE = 2000;
+
 function SeedLoader() {
   const { profile, familyGroup } = useFamilyStore();
   const { loadSeeds }            = useRecipeStore();
   const { checkAutoRefresh }     = usePriceStore();
+  const { user, profileLoading } = useAuth();
 
   useEffect(() => {
     const code = profile?.family_code;
@@ -69,16 +73,31 @@ function SeedLoader() {
   // Sync meal plans to/from Firestore, scoped to this family group's code
   useMealPlanSync(profile?.family_code);
 
+  // Auto-save profile + family group to Firestore whenever they change.
+  // Debounced so rapid changes (e.g. during setup) don't hammer the API.
+  // Skip while profileLoading — that's when we're applying remote data, not local changes.
+  useEffect(() => {
+    if (!user || profileLoading || !profile) return;
+    const timer = setTimeout(() => {
+      saveUserProfile(user.uid, {
+        profile,
+        familyGroup: familyGroup ?? null,
+        updated_at: new Date().toISOString(),
+      });
+    }, PROFILE_SAVE_DEBOUNCE);
+    return () => clearTimeout(timer);
+  }, [user, profile, familyGroup, profileLoading]);
+
   return null;
 }
 
 function AuthGate() {
-  const { user, loading } = useAuth();
+  const { user, loading, profileLoading } = useAuth();
   const { profile, setupProfile } = useFamilyStore();
   const [, setLocation] = useLocation();
 
-  // Show nothing while Firebase resolves auth state
-  if (loading) {
+  // Show spinner while Firebase resolves auth state OR while Firestore profile is loading
+  if (loading || (user && profileLoading)) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center">
         <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />

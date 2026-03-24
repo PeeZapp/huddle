@@ -1,13 +1,18 @@
 /**
- * Firestore sync helpers for meal plans.
+ * Firestore sync helpers for meal plans and user profiles.
  *
- * Document layout:
+ * Meal plan layout:
  *   Collection : "family-meal-plans"
  *   Document ID: familyCode (e.g. "FP-1234")
  *   Fields     : { plans: Record<weekStart, MealPlan>, updated_at: string }
  *
- * Each family group has exactly one document — all members share the same plan.
- * Plans from other family groups are never touched.
+ * User profile layout:
+ *   Collection : "users"
+ *   Document ID: Firebase UID
+ *   Fields     : { profile: UserProfile, familyGroup: FamilyGroup | null, updated_at: string }
+ *
+ * Each family group has exactly one meal-plan document — all members share it.
+ * Each user has their own profile document tied to their Firebase UID.
  */
 
 import {
@@ -18,7 +23,40 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { MealPlan } from "./types";
+import { MealPlan, UserProfile, FamilyGroup } from "./types";
+
+// ── User profile ──────────────────────────────────────────────────────────────
+
+export interface UserProfileDoc {
+  profile: UserProfile;
+  familyGroup: FamilyGroup | null;
+  updated_at: string;
+}
+
+function userDocRef(uid: string) {
+  return doc(db, "users", uid);
+}
+
+export async function loadUserProfile(uid: string): Promise<UserProfileDoc | null> {
+  if (!uid) return null;
+  try {
+    const snap = await getDoc(userDocRef(uid));
+    if (!snap.exists()) return null;
+    return snap.data() as UserProfileDoc;
+  } catch (err) {
+    console.warn("[firestore-sync] loadUserProfile failed:", err);
+    return null;
+  }
+}
+
+export async function saveUserProfile(uid: string, data: UserProfileDoc): Promise<void> {
+  if (!uid) return;
+  try {
+    await setDoc(userDocRef(uid), { ...data, updated_at: new Date().toISOString() }, { merge: true });
+  } catch (err) {
+    console.warn("[firestore-sync] saveUserProfile failed:", err);
+  }
+}
 
 const COLLECTION = "family-meal-plans";
 
