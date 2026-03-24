@@ -200,8 +200,9 @@ export default function Shopping() {
   const [newCategory, setNewCategory]   = useState("Other");
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [showCostInfo, setShowCostInfo] = useState(false);
-  const [showScrollTop, setShowScrollTop]     = useState(false);
+  const [showScrollTop, setShowScrollTop]       = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showSyncConfirm, setShowSyncConfirm]   = useState(false);
 
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 300);
@@ -219,9 +220,19 @@ export default function Shopping() {
     setNewItem("");
   };
 
-  const handleSyncPlan = () => {
+  const doSync = (replace: boolean) => {
+    if (replace) clearAll(familyGroup!.code);
     const plan = getPlan(weekStart, familyGroup!.code);
     generateFromPlan(plan, recipes);
+    setShowSyncConfirm(false);
+  };
+
+  const handleSyncPlan = () => {
+    if (activeItems.length > 0) {
+      setShowSyncConfirm(true);
+    } else {
+      doSync(false);
+    }
   };
 
   const handleRecipeClick = (recipeId: string) => {
@@ -265,9 +276,11 @@ export default function Shopping() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleSyncPlan} className="gap-2 h-9 text-xs">
-              <Wand2 size={14} /> Sync Plan
-            </Button>
+            {!showSyncConfirm && (
+              <Button variant="outline" size="sm" onClick={handleSyncPlan} className="gap-2 h-9 text-xs">
+                <Wand2 size={14} /> Sync Plan
+              </Button>
+            )}
             {!isEmpty && !showClearConfirm && (
               <button
                 onClick={() => setShowClearConfirm(true)}
@@ -299,6 +312,34 @@ export default function Shopping() {
             )}
           </div>
         </div>
+
+        {/* Sync confirmation banner */}
+        {showSyncConfirm && (
+          <div className="mt-3 flex items-center justify-between gap-2 bg-primary/5 border border-primary/20 rounded-xl px-3 py-2.5">
+            <p className="text-xs text-foreground font-medium">Replace current list or add to it?</p>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => doSync(true)}
+                className="h-8 px-3 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+              >
+                Replace
+              </button>
+              <button
+                onClick={() => doSync(false)}
+                className="h-8 px-3 rounded-lg border border-border text-xs font-semibold hover:bg-secondary transition-colors"
+              >
+                Add to list
+              </button>
+              <button
+                onClick={() => setShowSyncConfirm(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                aria-label="Cancel"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="p-6 space-y-6">

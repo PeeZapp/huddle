@@ -52,7 +52,7 @@ export default function Plan() {
   const { profile, familyGroup } = useFamilyStore();
   const { getPlan, setSlot }   = useMealPlanStore();
   const { recipes }            = useRecipeStore();
-  const { generateFromPlan, setSelectedWeek } = useShoppingStore();
+  const { setSelectedWeek } = useShoppingStore();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const weekStart = getWeekStart(currentDate);
@@ -148,7 +148,6 @@ export default function Plan() {
             className="flex-1 flex items-center justify-center gap-2 bg-white border border-border text-foreground font-semibold text-sm rounded-full py-2.5 shadow-sm hover:bg-secondary transition-colors"
             onClick={() => {
               setSelectedWeek(weekStart);
-              generateFromPlan(plan, recipes);
               setLocation("/shopping");
             }}
           >
