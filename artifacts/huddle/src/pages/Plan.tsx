@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, Sparkles, ChevronLeft, ChevronRight, Pencil, ShoppingCart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,9 +10,10 @@ import { DAYS, DAY_LABELS, MEAL_SLOTS, Day, MealSlotKey, MealSlotData } from "@/
 import { recipesForSlot } from "@/lib/generate-plan";
 import SlotActionSheet from "@/components/SlotActionSheet";
 
-// Persist scroll position across route changes so returning to the Plan page
-// lands you exactly where you left off.
-let _planScrollY = 0;
+// Persist scroll position and viewed week across route changes so returning to
+// the Plan page lands you exactly where you left off.
+let _planScrollY    = 0;
+let _planCurrentDate: Date | null = null;
 
 // Find a recipe that's nutritionally similar but different from the current one
 function findSwap(
@@ -58,7 +59,9 @@ export default function Plan() {
   const { recipes }            = useRecipeStore();
   const { setSelectedWeek } = useShoppingStore();
 
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => _planCurrentDate ?? new Date());
+  const currentDateRef = useRef(currentDate);
+  useEffect(() => { currentDateRef.current = currentDate; }, [currentDate]);
   const weekStart = getWeekStart(currentDate);
   const plan      = getPlan(weekStart, familyGroup?.code || "");
 
@@ -79,15 +82,16 @@ export default function Plan() {
     }
   }, [profile, setLocation]);
 
-  // Restore scroll on mount; save it on unmount so coming back lands in the same spot.
+  // Restore scroll on mount; save scroll + viewed week on unmount.
   useEffect(() => {
     const saved = _planScrollY;
-    // Defer slightly so the DOM has painted before scrolling
     const t = requestAnimationFrame(() => { window.scrollTo(0, saved); });
     return () => {
       cancelAnimationFrame(t);
-      _planScrollY = window.scrollY;
+      _planScrollY    = window.scrollY;
+      _planCurrentDate = currentDateRef.current;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!profile?.family_code) return null;
