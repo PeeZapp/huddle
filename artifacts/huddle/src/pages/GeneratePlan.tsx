@@ -199,11 +199,14 @@ export default function GeneratePlan() {
                   type="number"
                   min="0"
                   step="1"
-                  placeholder="e.g. 150"
+                  placeholder={`e.g. ${Math.round(150 * currency.multiplier)}`}
                   value={weeklyBudget}
                   onChange={e => setWeeklyBudget(e.target.value === "" ? "" : Number(e.target.value))}
-                  className="w-full pl-8 pr-4 py-2.5 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-secondary/30"
+                  className="w-full pl-8 pr-16 py-2.5 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-secondary/30"
                 />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded">
+                  {currency.code}
+                </span>
               </div>
               {typeof weeklyBudget === "number" && weeklyBudget > 0 && (
                 <p className="text-xs text-primary font-medium">
