@@ -148,16 +148,15 @@ export const useRecipeStore = create<RecipeState>()(
           const res = await fetch(`${base}seed-recipes.json`);
           if (!res.ok) return 0;
           const seeds: Recipe[] = await res.json();
-          // Re-read current recipes at write time (avoids stale-closure overwrite races)
-          const existingIds = new Set(get().recipes.map((r) => r.id));
-          // Keep seeds with family_code: "__seed__" — filter always finds them for any family
-          const newSeeds = seeds.filter((r) => !existingIds.has(r.id));
-          if (newSeeds.length > 0) {
-            set({ recipes: [...get().recipes, ...newSeeds], seedsLoaded: true });
-          } else {
-            set({ seedsLoaded: true });
-          }
-          return newSeeds.length;
+          // Tag all seeds as "global" so they are visible to every family.
+          // Also replace any existing seeds that were stored with the wrong code
+          // (old sessions used the user's family code or "__seed__").
+          const globalSeeds: Recipe[] = seeds.map(r => ({ ...r, family_code: "global" }));
+          const seedIds = new Set(globalSeeds.map(r => r.id));
+          // Keep non-seed user recipes, then add all global seeds fresh
+          const nonSeeds = get().recipes.filter(r => !seedIds.has(r.id));
+          set({ recipes: [...nonSeeds, ...globalSeeds], seedsLoaded: true });
+          return globalSeeds.length;
         } catch {
           return 0;
         }

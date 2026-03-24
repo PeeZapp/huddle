@@ -226,12 +226,17 @@ export default function Recipes() {
     if (e.key === "Backspace" && !fridgeInput && pantry.length) setPantry(prev => prev.slice(0, -1));
   };
 
-  // ── Library split — includes community recipes (family_code === "__community__") ──
+  // ── Three-tier visibility:
+  //   "global"        → built-in seed recipes, visible to everyone
+  //   "__community__" → user-shared community recipes, visible to everyone
+  //   "FP-XXXX"       → private family recipes, visible only to that family
+  // Legacy codes ("__seed__", no code, old family-code-tagged seeds) also shown for safety.
   const familyRecipes = recipes.filter(r =>
-    !r.family_code ||
-    r.family_code === familyGroup?.code ||
+    r.family_code === "global" ||
+    r.family_code === "__community__" ||
     r.family_code === "__seed__" ||
-    r.family_code === "__community__"
+    !r.family_code ||
+    (familyGroup && r.family_code === familyGroup.code)
   );
   const mealRecipes   = familyRecipes.filter(r => !r.is_component);
   const baseRecipes   = familyRecipes.filter(r => !!r.is_component);
