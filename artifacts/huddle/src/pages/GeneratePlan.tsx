@@ -118,13 +118,13 @@ export default function GeneratePlan() {
     const totalCal  = results.reduce((s, r) => s + (r.recipe.calories ?? 0), 0);
     const totalProt = results.reduce((s, r) => s + (r.recipe.protein ?? 0), 0);
 
-    // Cost estimate: sum each unique recipe's total cost (accounting for servings)
+    // Cost estimate: sum every slot's recipe cost (same approach as the shopping
+    // list, which accumulates ingredient amounts across all slot uses).
+    // We intentionally do NOT deduplicate by recipe ID — if Bolognese fills
+    // Tuesday AND Thursday, we need twice the ingredients, hence twice the cost.
     let totalCostUSD = 0;
     let costCovered  = 0;
-    const seen = new Set<string>();
     for (const { recipe } of results) {
-      if (seen.has(recipe.id)) continue;
-      seen.add(recipe.id);
       const cost = estimateRecipeCost(recipe, recipe.servings ?? 4);
       if (cost) {
         totalCostUSD += cost.totalUSD;
@@ -136,7 +136,7 @@ export default function GeneratePlan() {
       avgCal:       Math.round(totalCal  / DAYS),
       avgProt:      Math.round(totalProt / DAYS),
       weeklyCostUSD: costCovered > 0 ? totalCostUSD : null,
-      costCoverage:  costCovered / Math.max(1, seen.size),
+      costCoverage:  costCovered / Math.max(1, results.length),
     };
   }, [results]);
 
