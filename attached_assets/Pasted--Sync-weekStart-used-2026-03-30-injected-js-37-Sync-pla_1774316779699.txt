@@ -1,0 +1,319 @@
+[Sync] weekStart used: 2026-03-30
+injected.js:37 [Sync] plan.week_start: 2026-03-30
+injected.js:37 [Sync] slots: {
+  "monday_breakfast": {
+    "recipe_id": "seed_breakfast_17_qc1er",
+    "recipe_name": "Breakfast Quinoa Bowl",
+    "emoji": "🥣",
+    "calories": 390,
+    "protein": 16,
+    "carbs": 50,
+    "fat": 14,
+    "cook_time": 20
+  },
+  "monday_lunch": {
+    "recipe_id": "seed_lunch_16_p8m1n",
+    "recipe_name": "Teriyaki Chicken Rice Bowl",
+    "emoji": "🍱",
+    "calories": 540,
+    "protein": 36,
+    "carbs": 62,
+    "fat": 14,
+    "cook_time": 25
+  },
+  "monday_dinner": {
+    "recipe_id": "seed_dinner_4_gn66l",
+    "recipe_name": "BBQ Baby Back Ribs",
+    "emoji": "🍖",
+    "calories": 650,
+    "protein": 54,
+    "carbs": 24,
+    "fat": 36,
+    "cook_time": 240
+  },
+  "tuesday_breakfast": {
+    "recipe_id": "seed_breakfast_2_bm7qz",
+    "recipe_name": "Smashed Avocado & Poached Egg Toast",
+    "emoji": "🥑",
+    "calories": 380,
+    "protein": 16,
+    "carbs": 30,
+    "fat": 22,
+    "cook_time": 12
+  },
+  "tuesday_lunch": {
+    "recipe_id": "seed_lunch_20_t7s5u",
+    "recipe_name": "Pulled Chicken & Slaw Brioche",
+    "emoji": "🍔",
+    "calories": 560,
+    "protein": 40,
+    "carbs": 50,
+    "fat": 20,
+    "cook_time": 35
+  },
+  "tuesday_dinner": {
+    "recipe_id": "seed_dinner_1_rvn07",
+    "recipe_name": "Slow-Roasted Lamb Shoulder",
+    "emoji": "🍖",
+    "calories": 650,
+    "protein": 52,
+    "carbs": 8,
+    "fat": 48,
+    "cook_time": 240
+  },
+  "wednesday_breakfast": {
+    "recipe_id": "seed_breakfast_6_fr1tg",
+    "recipe_name": "Overnight Oats with Chia",
+    "emoji": "🥣",
+    "calories": 380,
+    "protein": 14,
+    "carbs": 52,
+    "fat": 12,
+    "cook_time": 5
+  },
+  "wednesday_lunch": {
+    "recipe_id": "seed_lunch_14_n2j8k",
+    "recipe_name": "Korean Beef Bibimbap Bowl",
+    "emoji": "🍚",
+    "calories": 560,
+    "protein": 30,
+    "carbs": 68,
+    "fat": 16,
+    "cook_time": 30
+  },
+  "wednesday_dinner": {
+    "recipe_id": "seed_dinner_3_zta96",
+    "recipe_name": "Classic Beef Burger",
+    "emoji": "🍔",
+    "calories": 680,
+    "protein": 52,
+    "carbs": 28,
+    "fat": 38,
+    "cook_time": 15
+  },
+  "thursday_breakfast": {
+    "recipe_id": "seed_breakfast_14_nz6bo",
+    "recipe_name": "Eggs Florentine",
+    "emoji": "🥚",
+    "calories": 430,
+    "protein": 24,
+    "carbs": 22,
+    "fat": 28,
+    "cook_time": 25
+  },
+  "thursday_lunch": {
+    "recipe_id": "seed_lunch_4_d4r5t",
+    "recipe_name": "Beef & Vegetable Fried Rice",
+    "emoji": "🍳",
+    "calories": 510,
+    "protein": 32,
+    "carbs": 58,
+    "fat": 14,
+    "cook_time": 20
+  },
+  "thursday_dinner": {
+    "recipe_id": "seed_dinner_3_ri2k0",
+    "recipe_name": "Moroccan Lamb Tagine",
+    "emoji": "🍲",
+    "calories": 650,
+    "protein": 42,
+    "carbs": 38,
+    "fat": 32,
+    "cook_time": 90
+  },
+  "friday_breakfast": {
+    "recipe_id": "seed_breakfast_16_pb7dq",
+    "recipe_name": "Corn Fritters with Poached Eggs",
+    "emoji": "🌽",
+    "calories": 420,
+    "protein": 20,
+    "carbs": 38,
+    "fat": 20,
+    "cook_time": 25
+  },
+  "friday_lunch": {
+    "recipe_id": "seed_lunch_10_j3c9d",
+    "recipe_name": "Beef Bánh Mì",
+    "emoji": "🥖",
+    "calories": 520,
+    "protein": 33,
+    "carbs": 52,
+    "fat": 18,
+    "cook_time": 25
+  },
+  "friday_dinner": {
+    "recipe_id": "seed_dinner_1_fccig",
+    "recipe_name": "Slow-Cooker Pulled Pork",
+    "emoji": "🐷",
+    "calories": 620,
+    "protein": 52,
+    "carbs": 18,
+    "fat": 35,
+    "cook_time": 480
+  },
+  "saturday_breakfast": {
+    "recipe_id": "seed_breakfast_4_dp5rh",
+    "recipe_name": "Fluffy American Pancakes",
+    "emoji": "🥞",
+    "calories": 410,
+    "protein": 12,
+    "carbs": 58,
+    "fat": 14,
+    "cook_time": 20
+  },
+  "saturday_lunch": {
+    "recipe_id": "seed_lunch_18_r1p3q",
+    "recipe_name": "BLT Club Sandwich",
+    "emoji": "🥪",
+    "calories": 490,
+    "protein": 28,
+    "carbs": 44,
+    "fat": 22,
+    "cook_time": 15
+  },
+  "saturday_dinner": {
+    "recipe_id": "seed_dinner_10_ginmg",
+    "recipe_name": "Beef and Halloumi Skewers",
+    "emoji": "🍖",
+    "calories": 620,
+    "protein": 48,
+    "carbs": 12,
+    "fat": 42,
+    "cook_time": 20
+  },
+  "sunday_breakfast": {
+    "recipe_id": "seed_breakfast_11_kw5yl",
+    "recipe_name": "Menemen (Turkish Scrambled Eggs)",
+    "emoji": "🍳",
+    "calories": 340,
+    "protein": 20,
+    "carbs": 18,
+    "fat": 20,
+    "cook_time": 20
+  },
+  "sunday_lunch": {
+    "recipe_id": "seed_lunch_9_i8a6b",
+    "recipe_name": "Chicken & Roasted Tomato Pide",
+    "emoji": "🫓",
+    "calories": 540,
+    "protein": 35,
+    "carbs": 55,
+    "fat": 18,
+    "cook_time": 30
+  },
+  "sunday_dinner": {
+    "recipe_id": "seed_dinner_5_abswi",
+    "recipe_name": "Lebanese Chicken Shawarma",
+    "emoji": "🫔",
+    "calories": 620,
+    "protein": 44,
+    "carbs": 36,
+    "fat": 26,
+    "cook_time": 40
+  }
+}
+injected.js:37 [Sync] recipes in plan: [
+  {
+    "slot": "monday_breakfast",
+    "recipe_id": "seed_breakfast_17_qc1er",
+    "recipe_name": "Breakfast Quinoa Bowl"
+  },
+  {
+    "slot": "monday_lunch",
+    "recipe_id": "seed_lunch_16_p8m1n",
+    "recipe_name": "Teriyaki Chicken Rice Bowl"
+  },
+  {
+    "slot": "monday_dinner",
+    "recipe_id": "seed_dinner_4_gn66l",
+    "recipe_name": "BBQ Baby Back Ribs"
+  },
+  {
+    "slot": "tuesday_breakfast",
+    "recipe_id": "seed_breakfast_2_bm7qz",
+    "recipe_name": "Smashed Avocado & Poached Egg Toast"
+  },
+  {
+    "slot": "tuesday_lunch",
+    "recipe_id": "seed_lunch_20_t7s5u",
+    "recipe_name": "Pulled Chicken & Slaw Brioche"
+  },
+  {
+    "slot": "tuesday_dinner",
+    "recipe_id": "seed_dinner_1_rvn07",
+    "recipe_name": "Slow-Roasted Lamb Shoulder"
+  },
+  {
+    "slot": "wednesday_breakfast",
+    "recipe_id": "seed_breakfast_6_fr1tg",
+    "recipe_name": "Overnight Oats with Chia"
+  },
+  {
+    "slot": "wednesday_lunch",
+    "recipe_id": "seed_lunch_14_n2j8k",
+    "recipe_name": "Korean Beef Bibimbap Bowl"
+  },
+  {
+    "slot": "wednesday_dinner",
+    "recipe_id": "seed_dinner_3_zta96",
+    "recipe_name": "Classic Beef Burger"
+  },
+  {
+    "slot": "thursday_breakfast",
+    "recipe_id": "seed_breakfast_14_nz6bo",
+    "recipe_name": "Eggs Florentine"
+  },
+  {
+    "slot": "thursday_lunch",
+    "recipe_id": "seed_lunch_4_d4r5t",
+    "recipe_name": "Beef & Vegetable Fried Rice"
+  },
+  {
+    "slot": "thursday_dinner",
+    "recipe_id": "seed_dinner_3_ri2k0",
+    "recipe_name": "Moroccan Lamb Tagine"
+  },
+  {
+    "slot": "friday_breakfast",
+    "recipe_id": "seed_breakfast_16_pb7dq",
+    "recipe_name": "Corn Fritters with Poached Eggs"
+  },
+  {
+    "slot": "friday_lunch",
+    "recipe_id": "seed_lunch_10_j3c9d",
+    "recipe_name": "Beef Bánh Mì"
+  },
+  {
+    "slot": "friday_dinner",
+    "recipe_id": "seed_dinner_1_fccig",
+    "recipe_name": "Slow-Cooker Pulled Pork"
+  },
+  {
+    "slot": "saturday_breakfast",
+    "recipe_id": "seed_breakfast_4_dp5rh",
+    "recipe_name": "Fluffy American Pancakes"
+  },
+  {
+    "slot": "saturday_lunch",
+    "recipe_id": "seed_lunch_18_r1p3q",
+    "recipe_name": "BLT Club Sandwich"
+  },
+  {
+    "slot": "saturday_dinner",
+    "recipe_id": "seed_dinner_10_ginmg",
+    "recipe_name": "Beef and Halloumi Skewers"
+  },
+  {
+    "slot": "sunday_breakfast",
+    "recipe_id": "seed_breakfast_11_kw5yl",
+    "recipe_name": "Menemen (Turkish Scrambled Eggs)"
+  },
+  {
+    "slot": "sunday_lunch",
+    "recipe_id": "seed_lunch_9_i8a6b",
+    "recipe_name": "Chicken & Roasted Tomato Pide"
+  },
+  {
+    "slot": "sunday_dinner",
+    "recipe_id": "seed_dinner_5_abswi",
+    "recipe_name": "Lebanese Chicken Shawarma"
