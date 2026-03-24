@@ -142,19 +142,18 @@ export const useRecipeStore = create<RecipeState>()(
         }));
         set({ recipes: cleaned });
       },
-      loadSeeds: async (familyCode) => {
+      loadSeeds: async (_familyCode) => {
         try {
           const base = import.meta.env.BASE_URL ?? "/";
           const res = await fetch(`${base}seed-recipes.json`);
           if (!res.ok) return 0;
           const seeds: Recipe[] = await res.json();
-          const existing = get().recipes;
-          const existingIds = new Set(existing.map((r) => r.id));
-          const newSeeds = seeds
-            .filter((r) => !existingIds.has(r.id))
-            .map((r) => ({ ...r, family_code: familyCode }));
+          // Re-read current recipes at write time (avoids stale-closure overwrite races)
+          const existingIds = new Set(get().recipes.map((r) => r.id));
+          // Keep seeds with family_code: "__seed__" — filter always finds them for any family
+          const newSeeds = seeds.filter((r) => !existingIds.has(r.id));
           if (newSeeds.length > 0) {
-            set({ recipes: [...existing, ...newSeeds], seedsLoaded: true });
+            set({ recipes: [...get().recipes, ...newSeeds], seedsLoaded: true });
           } else {
             set({ seedsLoaded: true });
           }
@@ -168,11 +167,11 @@ export const useRecipeStore = create<RecipeState>()(
           const { loadCommunityRecipes } = await import("../lib/firestore-sync");
           const communityRecipes = await loadCommunityRecipes();
           if (!communityRecipes.length) return;
-          const existing = get().recipes;
-          const existingIds = new Set(existing.map((r) => r.id));
+          // Re-read current recipes at write time to avoid overwriting seeds loaded concurrently
+          const existingIds = new Set(get().recipes.map((r) => r.id));
           const newOnes = communityRecipes.filter(r => !existingIds.has(r.id));
           if (newOnes.length > 0) {
-            set({ recipes: [...existing, ...newOnes] });
+            set({ recipes: [...get().recipes, ...newOnes] });
           }
         } catch {
           // community load failing silently is fine

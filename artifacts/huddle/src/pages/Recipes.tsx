@@ -146,7 +146,7 @@ function SortChip({ label, active, dir, onClick }: { label: string; active: bool
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Recipes() {
-  const { recipes, favourites, toggleFavourite, loadCommunity } = useRecipeStore();
+  const { recipes, favourites, toggleFavourite, loadCommunity, loadSeeds } = useRecipeStore();
   const { familyGroup } = useFamilyStore();
   const currency        = getCurrencyConfig(familyGroup?.country);
   const familyCode      = familyGroup?.code ?? "";
@@ -169,8 +169,12 @@ export default function Recipes() {
   useEffect(() => { _fridgeMode = mode; }, [mode]);
   useEffect(() => { _fridgePantry = pantry; }, [pantry]);
 
-  // Load community recipes once on mount
-  useEffect(() => { loadCommunity(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Ensure seeds + community recipes are loaded whenever this page mounts
+  // (guards against the store being cleared between sessions)
+  useEffect(() => {
+    if (familyCode) loadSeeds(familyCode);
+    loadCommunity();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scroll-to-top
   const [showScrollTop, setShowScrollTop] = useState(false);
