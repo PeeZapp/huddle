@@ -10,6 +10,10 @@ import { DAYS, DAY_LABELS, MEAL_SLOTS, Day, MealSlotKey, MealSlotData } from "@/
 import { recipesForSlot } from "@/lib/generate-plan";
 import SlotActionSheet from "@/components/SlotActionSheet";
 
+// Persist scroll position across route changes so returning to the Plan page
+// lands you exactly where you left off.
+let _planScrollY = 0;
+
 // Find a recipe that's nutritionally similar but different from the current one
 function findSwap(
   currentData: MealSlotData | null,
@@ -74,6 +78,17 @@ export default function Plan() {
       setExpandedDay(DAYS[dayIndex]);
     }
   }, [profile, setLocation]);
+
+  // Restore scroll on mount; save it on unmount so coming back lands in the same spot.
+  useEffect(() => {
+    const saved = _planScrollY;
+    // Defer slightly so the DOM has painted before scrolling
+    const t = requestAnimationFrame(() => { window.scrollTo(0, saved); });
+    return () => {
+      cancelAnimationFrame(t);
+      _planScrollY = window.scrollY;
+    };
+  }, []);
 
   if (!profile?.family_code) return null;
 
