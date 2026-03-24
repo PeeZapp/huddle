@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Settings, Plus, Sparkles, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { Settings, Plus, Sparkles, ChevronLeft, ChevronRight, Pencil, ShoppingCart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays } from "date-fns";
 import { Card } from "@/components/ui";
-import { useFamilyStore, useMealPlanStore, useRecipeStore } from "@/stores/huddle-stores";
+import { useFamilyStore, useMealPlanStore, useRecipeStore, useShoppingStore } from "@/stores/huddle-stores";
 import { getWeekStart } from "@/lib/utils";
 import { DAYS, DAY_LABELS, MEAL_SLOTS, Day, MealSlotKey, MealSlotData } from "@/lib/types";
 import { recipesForSlot } from "@/lib/generate-plan";
@@ -52,6 +52,7 @@ export default function Plan() {
   const { profile, familyGroup } = useFamilyStore();
   const { getPlan, setSlot }   = useMealPlanStore();
   const { recipes }            = useRecipeStore();
+  const { generateFromPlan, setSelectedWeek } = useShoppingStore();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const weekStart = getWeekStart(currentDate);
@@ -141,12 +142,25 @@ export default function Plan() {
           </button>
         </div>
 
-        <Link href="/generate">
-          <button className="mt-3 w-full flex items-center justify-center gap-2 bg-primary text-white font-semibold text-sm rounded-full py-2.5 shadow-sm hover:bg-primary/90 transition-colors">
-            <Sparkles size={16} />
-            Generate Plan
+        <div className="mt-3 flex gap-2">
+          <Link href="/generate" className="flex-1">
+            <button className="w-full flex items-center justify-center gap-2 bg-primary text-white font-semibold text-sm rounded-full py-2.5 shadow-sm hover:bg-primary/90 transition-colors">
+              <Sparkles size={16} />
+              Generate Plan
+            </button>
+          </Link>
+          <button
+            className="flex-1 flex items-center justify-center gap-2 bg-white border border-border text-foreground font-semibold text-sm rounded-full py-2.5 shadow-sm hover:bg-secondary transition-colors"
+            onClick={() => {
+              setSelectedWeek(weekStart);
+              generateFromPlan(plan, recipes);
+              setLocation("/shopping");
+            }}
+          >
+            <ShoppingCart size={16} />
+            Shop this week
           </button>
-        </Link>
+        </div>
       </header>
 
       <div className="p-6 space-y-4">

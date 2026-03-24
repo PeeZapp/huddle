@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Plus, Trash2, Wand2, ShoppingCart, Layers, Info } from "lucide-react";
+import { Check, Plus, Trash2, Wand2, ShoppingCart, Layers, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button, Input } from "@/components/ui";
 import {
@@ -9,6 +9,7 @@ import {
 import { getWeekStart } from "@/lib/utils";
 import { ShoppingItem } from "@/lib/types";
 import { estimateIngredientCostUSD, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
+import { format, parseISO } from "date-fns";
 
 // ─── Category config ─────────────────────────────────────────────────────────
 
@@ -92,6 +93,95 @@ function estimateListCost(items: ShoppingItem[]): CostSummary {
   return { totalUSD, coveredItems: covered, totalItems: items.length };
 }
 
+// ─── Ingredient row with recipe attribution dropdown ──────────────────────────
+
+function IngredientRow({
+  item,
+  currency,
+  onToggle,
+  onDelete,
+  onRecipeClick,
+}: {
+  item: ShoppingItem;
+  currency: ReturnType<typeof getCurrencyConfig>;
+  onToggle: () => void;
+  onDelete: () => void;
+  onRecipeClick: (recipeId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const itemCostUSD = estimateIngredientCostUSD(item.name, item.amount);
+  const hasSources  = (item.recipe_sources?.length ?? 0) > 0;
+
+  return (
+    <div className="bg-white border border-border rounded-xl shadow-sm overflow-hidden">
+      <div className="flex items-center gap-3 p-3.5">
+        <button
+          onClick={onToggle}
+          className="w-6 h-6 rounded-full border-2 border-primary/40 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-medium text-sm">{item.name}</span>
+            {item.amount && (
+              <span className="text-xs font-normal text-muted-foreground">{item.amount}</span>
+            )}
+          </div>
+          {item.is_base_recipe && item.base_recipe_id && (
+            <button
+              onClick={() => onRecipeClick(item.base_recipe_id!)}
+              className="flex items-center gap-1 text-[10px] font-bold text-primary mt-0.5 hover:underline"
+            >
+              <Layers size={9} />
+              from {item.base_recipe_name ?? "base recipe"}
+            </button>
+          )}
+        </div>
+
+        {itemCostUSD !== null && (
+          <span className="text-[11px] font-semibold text-muted-foreground shrink-0">
+            ~{formatCost(itemCostUSD, currency)}
+          </span>
+        )}
+
+        {hasSources && (
+          <button
+            onClick={() => setExpanded(v => !v)}
+            className="shrink-0 text-muted-foreground hover:text-primary transition-colors p-1"
+            title="See which recipes use this ingredient"
+          >
+            {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          </button>
+        )}
+
+        <button
+          onClick={onDelete}
+          className="text-muted-foreground/50 hover:text-destructive transition-colors p-1 shrink-0"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+
+      {expanded && hasSources && (
+        <div className="border-t border-border/50 bg-secondary/30 px-3.5 py-2.5 space-y-1.5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+            Used in
+          </p>
+          {item.recipe_sources!.map(src => (
+            <button
+              key={src.recipe_id}
+              onClick={() => onRecipeClick(src.recipe_id)}
+              className="w-full flex items-center gap-2 text-left text-sm font-medium text-primary hover:underline"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
+              {src.recipe_name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Shopping() {
@@ -101,6 +191,7 @@ export default function Shopping() {
 
   const {
     items, addItem, toggleItem, deleteItem, clearChecked, generateFromPlan,
+    selectedWeekStart, setSelectedWeek,
   } = useShoppingStore();
   const { getPlan }  = useMealPlanStore();
   const { recipes }  = useRecipeStore();
@@ -110,7 +201,8 @@ export default function Shopping() {
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [showCostInfo, setShowCostInfo] = useState(false);
 
-  const weekStart = getWeekStart();
+  // Use the week selected from the Plan page, falling back to the current week
+  const weekStart = selectedWeekStart ?? getWeekStart();
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,9 +211,13 @@ export default function Shopping() {
     setNewItem("");
   };
 
-  const handleAutoGenerate = () => {
+  const handleSyncPlan = () => {
     const plan = getPlan(weekStart, familyGroup!.code);
     generateFromPlan(plan, recipes);
+  };
+
+  const handleRecipeClick = (recipeId: string) => {
+    setLocation(`/recipe/${recipeId}?from=shopping`);
   };
 
   const activeItems  = items.filter(i => i.family_code === familyGroup?.code && !i.checked);
@@ -130,11 +226,22 @@ export default function Shopping() {
   const grouped = groupByCategory(activeItems);
   const isEmpty  = activeItems.length === 0 && checkedItems.length === 0;
 
-  // Cost estimate for active (unchecked) items
   const costSummary = activeItems.length > 0 ? estimateListCost(activeItems) : null;
   const coveragePct = costSummary
     ? Math.round((costSummary.coveredItems / Math.max(1, costSummary.totalItems)) * 100)
     : 0;
+
+  // Format the week label for the header
+  const weekLabel = (() => {
+    try {
+      const d = parseISO(weekStart);
+      const end = new Date(d);
+      end.setDate(end.getDate() + 6);
+      return `${format(d, "MMM d")} – ${format(end, "MMM d")}`;
+    } catch {
+      return "";
+    }
+  })();
 
   return (
     <div className="flex flex-col min-h-full pb-24">
@@ -145,8 +252,11 @@ export default function Shopping() {
           <div>
             <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">Shopping List</p>
             <h1 className="text-3xl font-display font-bold">Groceries</h1>
+            {weekLabel && (
+              <p className="text-xs text-muted-foreground mt-0.5">Week of {weekLabel}</p>
+            )}
           </div>
-          <Button variant="outline" size="sm" onClick={handleAutoGenerate} className="gap-2 h-9 text-xs">
+          <Button variant="outline" size="sm" onClick={handleSyncPlan} className="gap-2 h-9 text-xs">
             <Wand2 size={14} /> Sync Plan
           </Button>
         </div>
@@ -186,7 +296,6 @@ export default function Shopping() {
                 </div>
               </div>
 
-              {/* Coverage bar */}
               <div className="mt-3 h-1.5 bg-primary/15 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary rounded-full transition-all"
@@ -195,7 +304,6 @@ export default function Shopping() {
               </div>
             </div>
 
-            {/* Disclaimer — expandable */}
             {showCostInfo && (
               <div className="px-4 pb-4 pt-0 border-t border-primary/10 mt-0">
                 <p className="text-[11px] text-muted-foreground leading-relaxed pt-3">
@@ -218,7 +326,6 @@ export default function Shopping() {
             <Button type="submit" size="icon" className="shrink-0"><Plus size={20} /></Button>
           </form>
 
-          {/* Category picker */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-muted-foreground">Category:</span>
             {showCatPicker ? (
@@ -267,49 +374,16 @@ export default function Shopping() {
             </div>
 
             <div className="space-y-2">
-              {catItems.map(item => {
-                const itemCostUSD = estimateIngredientCostUSD(item.name, item.amount);
-                return (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-border shadow-sm"
-                  >
-                    <button
-                      onClick={() => toggleItem(item.id)}
-                      className="w-6 h-6 rounded-full border-2 border-primary/40 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-medium text-sm">{item.name}</span>
-                        {item.amount && (
-                          <span className="text-xs font-normal text-muted-foreground">{item.amount}</span>
-                        )}
-                      </div>
-                      {item.is_base_recipe && item.base_recipe_id && (
-                        <button
-                          onClick={() => setLocation(`/recipe/${item.base_recipe_id}`)}
-                          className="flex items-center gap-1 text-[10px] font-bold text-primary mt-0.5 hover:underline"
-                        >
-                          <Layers size={9} />
-                          from {item.base_recipe_name ?? "base recipe"}
-                        </button>
-                      )}
-                    </div>
-                    {/* Per-item cost estimate */}
-                    {itemCostUSD !== null && (
-                      <span className="text-[11px] font-semibold text-muted-foreground shrink-0">
-                        ~{formatCost(itemCostUSD, currency)}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => deleteItem(item.id)}
-                      className="text-muted-foreground/50 hover:text-destructive transition-colors p-1 shrink-0"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                );
-              })}
+              {catItems.map(item => (
+                <IngredientRow
+                  key={item.id}
+                  item={item}
+                  currency={currency}
+                  onToggle={() => toggleItem(item.id)}
+                  onDelete={() => deleteItem(item.id)}
+                  onRecipeClick={handleRecipeClick}
+                />
+              ))}
             </div>
           </div>
         ))}

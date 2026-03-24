@@ -221,17 +221,22 @@ export const useMealPlanStore = create<MealPlanState>()(
 // --- SHOPPING STORE ---
 interface ShoppingState {
   items: ShoppingItem[];
+  /** The week that the shopping list was last synced from — may differ from "this week" */
+  selectedWeekStart: string | null;
   addItem: (item: Omit<ShoppingItem, "id" | "created_at" | "checked">) => void;
   toggleItem: (id: string) => void;
   deleteItem: (id: string) => void;
   clearChecked: (familyCode: string) => void;
   generateFromPlan: (plan: MealPlan, recipes: Recipe[]) => void;
+  setSelectedWeek: (weekStart: string) => void;
 }
 
 export const useShoppingStore = create<ShoppingState>()(
   persist(
     (set, get) => ({
       items: [],
+      selectedWeekStart: null,
+      setSelectedWeek: (weekStart) => set({ selectedWeekStart: weekStart }),
       addItem: (data) => set({ items: [...get().items, { ...data, id: generateId(), checked: false, created_at: new Date().toISOString() }] }),
       toggleItem: (id) => set({ items: get().items.map((i) => i.id === id ? { ...i, checked: !i.checked } : i) }),
       deleteItem: (id) => set({ items: get().items.filter((i) => i.id !== id) }),
@@ -240,37 +245,52 @@ export const useShoppingStore = create<ShoppingState>()(
         // Build a map of base-recipe id → Recipe for quick lookup
         const baseRecipeMap = new Map(recipes.filter(r => r.is_component).map(r => [r.id, r]));
 
-        // Collect every ingredient from every filled slot
-        const raw: { name: string; amount?: string; category?: string; base_recipe_id?: string }[] = [];
+        // Collect every ingredient from every filled slot, tracking the source recipe
+        const raw: {
+          name: string; amount?: string; category?: string;
+          base_recipe_id?: string;
+          recipe_id: string; recipe_name: string;
+        }[] = [];
+
         Object.values(plan.slots).forEach(slot => {
           if (slot.recipe_id) {
             const recipe = recipes.find(r => r.id === slot.recipe_id);
             if (recipe?.ingredients) {
               recipe.ingredients.forEach(ing => {
-                raw.push({ name: ing.name, amount: ing.amount, category: ing.category, base_recipe_id: ing.base_recipe_id });
+                raw.push({
+                  name: ing.name,
+                  amount: ing.amount,
+                  category: ing.category,
+                  base_recipe_id: ing.base_recipe_id,
+                  recipe_id: recipe.id,
+                  recipe_name: recipe.name,
+                });
               });
-              // If the recipe itself IS a base recipe link (unusual), its own ingredients are also pulled in automatically
             }
           }
         });
 
         // Deduplicate by name and combine amounts (e.g. 3×50g butter → 150g butter)
-        // We need to track base_recipe_id through deduplication — deduplicate plain fields then re-attach
         const rawPlain = raw.map(({ name, amount, category }) => ({ name, amount, category }));
-        const deduped = deduplicateIngredients(rawPlain);
+        const deduped  = deduplicateIngredients(rawPlain);
 
-        // Re-attach the base_recipe_id from the first raw occurrence with that name
+        // Re-attach metadata keyed by ingredient name
         const baseIdByName = new Map<string, string>();
+        const sourcesByName = new Map<string, Array<{ recipe_id: string; recipe_name: string }>>();
         raw.forEach(r => {
-          if (r.base_recipe_id) {
-            const key = r.name.toLowerCase().trim();
-            if (!baseIdByName.has(key)) baseIdByName.set(key, r.base_recipe_id);
+          const key = r.name.toLowerCase().trim();
+          if (r.base_recipe_id && !baseIdByName.has(key)) baseIdByName.set(key, r.base_recipe_id);
+          const sources = sourcesByName.get(key) ?? [];
+          if (!sources.some(s => s.recipe_id === r.recipe_id)) {
+            sources.push({ recipe_id: r.recipe_id, recipe_name: r.recipe_name });
           }
+          sourcesByName.set(key, sources);
         });
 
         const now = new Date().toISOString();
         const newItems: ShoppingItem[] = deduped.map(ing => {
-          const brId = baseIdByName.get(ing.name.toLowerCase().trim());
+          const key  = ing.name.toLowerCase().trim();
+          const brId = baseIdByName.get(key);
           const br   = brId ? baseRecipeMap.get(brId) : undefined;
           return {
             id: generateId(),
@@ -281,6 +301,7 @@ export const useShoppingStore = create<ShoppingState>()(
             week_start: plan.week_start,
             family_code: plan.family_code,
             created_at: now,
+            recipe_sources: sourcesByName.get(key) ?? [],
             ...(br ? { is_base_recipe: true, base_recipe_id: br.id, base_recipe_name: br.name } : {}),
           };
         });

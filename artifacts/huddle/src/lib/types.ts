@@ -88,6 +88,8 @@ export interface ShoppingItem {
   is_base_recipe?: boolean;    // ingredient came from a base recipe in the library
   base_recipe_id?: string;     // id of the source base recipe
   base_recipe_name?: string;   // display name of the source base recipe
+  /** Which meal-plan recipes this ingredient appears in (populated by generateFromPlan) */
+  recipe_sources?: Array<{ recipe_id: string; recipe_name: string }>;
 }
 
 export interface FamilyMember {
