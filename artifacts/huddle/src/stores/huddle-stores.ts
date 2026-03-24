@@ -257,14 +257,21 @@ export const useShoppingStore = create<ShoppingState>()(
         // Build a map of base-recipe id → Recipe for quick lookup
         const baseRecipeMap = new Map(recipes.filter(r => r.is_component).map(r => [r.id, r]));
 
-        // Collect every ingredient from every filled slot, tracking the source recipe
+        // Collect every ingredient from every ACTIVE slot, tracking the source recipe.
+        // Slots that aren't in active_slots may exist from a previous generation but
+        // should not appear in the shopping list (they're hidden on the Plan page too).
+        const activeSlotSet = new Set(plan.active_slots ?? ["breakfast", "lunch", "dinner"]);
+
         const raw: {
           name: string; amount?: string; category?: string;
           base_recipe_id?: string;
           recipe_id: string; recipe_name: string;
         }[] = [];
 
-        Object.values(plan.slots).forEach(slot => {
+        Object.entries(plan.slots).forEach(([key, slot]) => {
+          // key format: "monday_breakfast" → extract meal type
+          const mealType = key.split("_").pop() ?? "";
+          if (!activeSlotSet.has(mealType)) return;
           if (slot.recipe_id) {
             const recipe = recipes.find(r => r.id === slot.recipe_id);
             if (recipe?.ingredients) {
