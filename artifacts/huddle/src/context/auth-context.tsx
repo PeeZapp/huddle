@@ -21,6 +21,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { _applyRemoteProfile } = useFamilyStore();
 
   useEffect(() => {
+    // If Firebase is not configured, skip auth state monitoring
+    if (!auth) {
+      setUser(null);
+      setLoading(false);
+      setProfileLoading(false);
+      return;
+    }
+
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
