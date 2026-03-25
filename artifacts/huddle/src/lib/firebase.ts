@@ -21,9 +21,24 @@ const firebaseConfig = {
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db   = getFirestore(app);
+// Initialize Firebase only if credentials are provided
+let app: any = null;
+let auth: any = null;
+let db: any = null;
+
+try {
+  if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+    app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } else {
+    console.warn('Firebase credentials not configured. Running in local-only mode.');
+  }
+} catch (error) {
+  console.warn('Firebase initialization failed. Running in local-only mode.', error);
+}
+
+export { auth, db };
 
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
