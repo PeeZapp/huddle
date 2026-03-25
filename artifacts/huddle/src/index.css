@@ -80,6 +80,7 @@
     @apply bg-background text-foreground antialiased font-sans overflow-x-hidden;
     /* Prevent pull-to-refresh on mobile for a more native feel */
     overscroll-behavior-y: none;
+    min-height: 100dvh;
   }
 
   h1, h2, h3, h4, h5, h6 {

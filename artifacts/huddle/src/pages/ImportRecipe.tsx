@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Button, Input } from "@/components/ui";
 import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
-import { MEAL_SLOTS, MealSlotKey } from "@/lib/types";
+import { MEAL_SLOTS, MealSlotKey, Recipe } from "@/lib/types";
 
 // ── AI helpers ────────────────────────────────────────────────────────────────
 
@@ -57,64 +57,6 @@ async function extractFromUrl(url: string) {
   );
 }
 
-function extractNoAiFromText(content: string): Record<string, unknown> | null {
-  const lines = content
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-  if (lines.length < 4) return null;
-
-  const lower = lines.map((l) => l.toLowerCase());
-  const ingredientsIdx = lower.findIndex((l) => l === "ingredients" || l.startsWith("ingredients:"));
-  const methodIdx = lower.findIndex((l) =>
-    l === "method" ||
-    l === "instructions" ||
-    l.startsWith("method:") ||
-    l.startsWith("instructions:"),
-  );
-
-  if (ingredientsIdx < 0 && methodIdx < 0) return null;
-
-  const name = lines[0] || "Imported Recipe";
-  const ingredientStart = ingredientsIdx >= 0 ? ingredientsIdx + 1 : 1;
-  const ingredientEnd = methodIdx > ingredientStart ? methodIdx : lines.length;
-  const ingredientLines = lines.slice(ingredientStart, ingredientEnd);
-  const methodLines = methodIdx >= 0 ? lines.slice(methodIdx + 1) : [];
-
-  const ingredients = ingredientLines
-    .filter((l) => l.length > 1)
-    .map((line) => {
-      const clean = line.replace(/^[-*•]\s*/, "");
-      const m = clean.match(/^([\d¼½¾⅓⅔.,/\s]+(?:g|kg|ml|l|tbsp|tsp|cup|cups|oz|lb)?)\s+(.+)$/i);
-      if (!m) return { name: clean, amount: "" };
-      return { amount: m[1].trim(), name: m[2].trim() };
-    });
-
-  const method = methodLines
-    .map((l) => l.replace(/^(\d+[\).\s-]+|[-*•]\s*)/, "").trim())
-    .filter((l) => l.length > 1);
-
-  if (ingredients.length === 0 && method.length === 0) return null;
-
-  return {
-    name,
-    emoji: "🍽",
-    photo_color: "#639922",
-    cuisine: undefined,
-    cook_time: undefined,
-    servings: undefined,
-    calories: undefined,
-    protein: undefined,
-    carbs: undefined,
-    fat: undefined,
-    vegetarian: false,
-    ingredients,
-    method,
-    chef_tip: undefined,
-    meal_slots: ["dinner"],
-  };
-}
-
 // ── Normaliser ────────────────────────────────────────────────────────────────
 
 function toStr(v: unknown): string | undefined {
@@ -133,13 +75,21 @@ function toBool(v: unknown): boolean {
   return Boolean(v);
 }
 
-function normalize(raw: Record<string, unknown>): Record<string, unknown> {
+type RecipeDraft = Omit<Recipe, "id" | "created_at" | "family_code">;
+
+function normalize(raw: Record<string, unknown>): RecipeDraft {
   const ingredients = (Array.isArray(raw.ingredients) ? raw.ingredients : []).map((ing: unknown) => {
     const i = (typeof ing === "object" && ing !== null ? ing : { name: String(ing) }) as Record<string, unknown>;
     return { name: toStr(i.name) ?? "", amount: toStr(i.amount) ?? "", category: toStr(i.category) ?? "other" };
   });
   const method     = (Array.isArray(raw.method) ? raw.method : []).map((s: unknown) => String(s));
-  const meal_slots = Array.isArray(raw.meal_slots) ? raw.meal_slots.map(String) : ["dinner"];
+  const parsedMealSlots = Array.isArray(raw.meal_slots)
+    ? raw.meal_slots.filter((slot): slot is MealSlotKey => {
+        const value = String(slot);
+        return MEAL_SLOTS.some((candidate) => candidate.key === value);
+      })
+    : [];
+  const meal_slots: MealSlotKey[] = parsedMealSlots.length > 0 ? parsedMealSlots : ["dinner"];
 
   return {
     name:        toStr(raw.name)        ?? "Imported Recipe",
@@ -315,15 +265,13 @@ export default function ImportRecipe() {
   const { addRecipe }   = useRecipeStore();
 
   const [tab, setTab]     = useState<"url" | "text">("url");
-  const [noAiMode, setNoAiMode] = useState(false);
   const [url, setUrl]     = useState("");
   const [text, setText]   = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | undefined>();
-  const [noAiFallback, setNoAiFallback] = useState<{ type: "url" | "text"; value: string } | null>(null);
 
   // Preview state
-  const [previewData,  setPreviewData]  = useState<Record<string, unknown> | null>(null);
+  const [previewData,  setPreviewData]  = useState<RecipeDraft | null>(null);
   const [previewSource, setPreviewSource] = useState<Source>("text-paste");
   const [previewDomain, setPreviewDomain] = useState<string | undefined>();
   const [sourceUrl, setSourceUrl]       = useState<string | undefined>();
@@ -334,102 +282,31 @@ export default function ImportRecipe() {
 
   const isLoading = phase === "fetching" || phase === "extracting" || phase === "saving";
 
-  const extractWithAiFromText = async (content: string) => {
-    setPhase("extracting");
-    const raw = await extractFromText(content);
-    const parsed = normalize(raw);
-    setPreviewData(parsed);
-    setPreviewSource("text-paste");
-    setPreviewDomain(undefined);
-    setSourceUrl(undefined);
-    setSelectedSlot((parsed.meal_slots as MealSlotKey[])?.[0] ?? "dinner");
-    setPhase("preview");
-  };
-
-  const extractWithAiFromUrl = async (targetUrl: string, domain?: string) => {
-    setPhase("fetching");
-    const scrapeRes = await fetch("/api/scrape", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: targetUrl }),
-    });
-    const scrapeData = await scrapeRes.json() as {
-      error?: string;
-      recipe?: Record<string, unknown>;
-      content?: string;
-      blocked?: boolean;
-    };
-
-    if (!scrapeRes.ok || scrapeData.error) {
-      throw new Error(scrapeData.error ?? "Could not fetch that page");
-    }
-
-    let raw: Record<string, unknown>;
-    let src: Source;
-
-    if (scrapeData.recipe) {
-      raw = scrapeData.recipe;
-      src = "json-ld";
-      setPhase("extracting");
-      await new Promise(r => setTimeout(r, 300));
-    } else if (scrapeData.content) {
-      setPhase("extracting");
-      raw = await extractFromText(scrapeData.content);
-      src = "text-scraped";
-    } else if (scrapeData.blocked) {
-      setPhase("extracting");
-      raw = await extractFromUrl(targetUrl);
-      src = "blocked-ai";
-    } else {
-      throw new Error("Could not read content from that page. Try pasting the recipe text instead.");
-    }
-
-    const parsed = normalize(raw);
-    setPreviewData(parsed);
-    setPreviewSource(src);
-    setPreviewDomain(domain);
-    setSourceUrl(targetUrl);
-    setSelectedSlot((parsed.meal_slots as MealSlotKey[])?.[0] ?? "dinner");
-    setPhase("preview");
-  };
-
   // ── Reset to the input form ────────────────────────────────────────────────
   const handleStartOver = () => {
     setPhase("idle");
     setPreviewData(null);
     setError(undefined);
-    setNoAiFallback(null);
   };
 
   // ── Step 1: extract (no save yet) ─────────────────────────────────────────
   const handleExtract = async () => {
     if (isLoading) return;
     setError(undefined);
-    setNoAiFallback(null);
 
     // Text mode
     if (tab === "text") {
       if (!text.trim()) return;
+      setPhase("extracting");
       try {
-        if (noAiMode) {
-          setPhase("extracting");
-          const raw = extractNoAiFromText(text.trim());
-          if (!raw) {
-            setPhase("error");
-            setError("No-AI extraction couldn't parse this text format.");
-            setNoAiFallback({ type: "text", value: text.trim() });
-            return;
-          }
-          const parsed = normalize(raw);
-          setPreviewData(parsed);
-          setPreviewSource("text-paste");
-          setPreviewDomain(undefined);
-          setSourceUrl(undefined);
-          setSelectedSlot((parsed.meal_slots as MealSlotKey[])?.[0] ?? "dinner");
-          setPhase("preview");
-          return;
-        }
-        await extractWithAiFromText(text.trim());
+        const raw    = await extractFromText(text.trim());
+        const parsed = normalize(raw);
+        setPreviewData(parsed);
+        setPreviewSource("text-paste");
+        setPreviewDomain(undefined);
+        setSourceUrl(undefined);
+        setSelectedSlot((parsed.meal_slots as MealSlotKey[])?.[0] ?? "dinner");
+        setPhase("preview");
       } catch {
         setPhase("error");
         setError("Could not extract recipe from that text. Try pasting more of the recipe.");
@@ -449,56 +326,54 @@ export default function ImportRecipe() {
     try { domain = new URL(trimmedUrl).hostname.replace(/^www\./, ""); } catch { /* ignore */ }
 
     try {
-      if (noAiMode) {
-        setPhase("fetching");
-        const scrapeRes = await fetch("/api/scrape", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: trimmedUrl }),
-        });
-        const scrapeData = await scrapeRes.json() as { error?: string; recipe?: Record<string, unknown> };
-        if (!scrapeRes.ok || scrapeData.error) {
-          throw new Error(scrapeData.error ?? "Could not fetch that page");
-        }
-        if (!scrapeData.recipe) {
-          setPhase("error");
-          setError("No-AI mode couldn't extract this URL automatically.");
-          setNoAiFallback({ type: "url", value: trimmedUrl });
-          return;
-        }
-        const parsed = normalize(scrapeData.recipe);
-        setPreviewData(parsed);
-        setPreviewSource("json-ld");
-        setPreviewDomain(domain);
-        setSourceUrl(trimmedUrl);
-        setSelectedSlot((parsed.meal_slots as MealSlotKey[])?.[0] ?? "dinner");
-        setPhase("preview");
-        return;
+      setPhase("fetching");
+      const scrapeRes  = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmedUrl }),
+      });
+      const scrapeData = await scrapeRes.json() as {
+        error?: string;
+        recipe?: Record<string, unknown>;
+        content?: string;
+        blocked?: boolean;
+      };
+
+      if (!scrapeRes.ok || scrapeData.error) {
+        throw new Error(scrapeData.error ?? "Could not fetch that page");
       }
 
-      await extractWithAiFromUrl(trimmedUrl, domain);
+      let raw: Record<string, unknown>;
+      let src: Source;
+
+      if (scrapeData.recipe) {
+        raw = scrapeData.recipe;
+        src = "json-ld";
+        setPhase("extracting");
+        await new Promise(r => setTimeout(r, 300)); // brief pause so user sees the step
+      } else if (scrapeData.content) {
+        setPhase("extracting");
+        raw = await extractFromText(scrapeData.content);
+        src = "text-scraped";
+      } else if (scrapeData.blocked) {
+        setPhase("extracting");
+        raw = await extractFromUrl(trimmedUrl);
+        src = "blocked-ai";
+      } else {
+        throw new Error("Could not read content from that page. Try pasting the recipe text instead.");
+      }
+
+      const parsed = normalize(raw);
+      setPreviewData(parsed);
+      setPreviewSource(src);
+      setPreviewDomain(domain);
+      setSourceUrl(trimmedUrl);
+      setSelectedSlot((parsed.meal_slots as MealSlotKey[])?.[0] ?? "dinner");
+      setPhase("preview");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Import failed";
       setPhase("error");
       setError(msg);
-    }
-  };
-
-  const handleUseAiFallback = async () => {
-    if (!noAiFallback || isLoading) return;
-    setError(undefined);
-    setNoAiFallback(null);
-    try {
-      if (noAiFallback.type === "text") {
-        await extractWithAiFromText(noAiFallback.value);
-      } else {
-        let domain: string | undefined;
-        try { domain = new URL(noAiFallback.value).hostname.replace(/^www\./, ""); } catch { /* ignore */ }
-        await extractWithAiFromUrl(noAiFallback.value, domain);
-      }
-    } catch {
-      setPhase("error");
-      setError("AI extraction failed. Please try again.");
     }
   };
 
@@ -510,14 +385,13 @@ export default function ImportRecipe() {
       const isBase = selectedSlot === "base";
       const recipe = addRecipe({
         ...previewData,
-        name: String(previewData.name ?? "Imported Recipe"),
         is_component: isBase || undefined,
         excluded_from_auto: isBase || undefined,
         meal_slots: isBase
           ? []
           : selectedSlot
             ? [selectedSlot]
-            : (previewData.meal_slots as MealSlotKey[]) ?? ["dinner"],
+            : previewData.meal_slots ?? ["dinner"],
         family_code: familyGroup.code,
         imported: true,
         source_url: sourceUrl,
@@ -689,30 +563,6 @@ export default function ImportRecipe() {
           </button>
         </div>
 
-        <label className="flex items-center justify-between bg-white border border-border rounded-xl px-3 py-2.5">
-          <div>
-            <p className="text-sm font-semibold">No AI mode</p>
-            <p className="text-[11px] text-muted-foreground">Use only direct extraction and local parsing</p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={noAiMode}
-            onClick={() => {
-              setNoAiMode((v) => !v);
-              setNoAiFallback(null);
-              if (phase === "error") setPhase("idle");
-            }}
-            className={`relative w-11 h-6 rounded-full transition-colors ${noAiMode ? "bg-primary" : "bg-border"}`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
-                noAiMode ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
-        </label>
-
         {/* Input */}
         {tab === "url" ? (
           <div className="space-y-2">
@@ -779,25 +629,7 @@ export default function ImportRecipe() {
           </button>
         )}
 
-        {phase === "error" && noAiFallback && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleUseAiFallback}
-          >
-            <Sparkles size={15} className="mr-2 text-primary" />
-            Use AI credits instead
-          </Button>
-        )}
-
         <div className="mt-auto">
-          <p className="text-[11px] text-muted-foreground text-center mb-2">
-            {noAiMode
-              ? "No AI mode enabled"
-              : tab === "text"
-                ? "Uses AI credits"
-                : "May use AI credits if direct extraction is unavailable"}
-          </p>
           <Button
             className="w-full"
             size="lg"
