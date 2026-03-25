@@ -25,7 +25,7 @@ Huddle is a family meal planning PWA monorepo. See `replit.md` for full architec
 ### Non-Obvious Gotchas
 
 - **Node.js 24 required**: The project specifies Node 24 in `replit.md`. Use `nvm use 24` (pre-installed in the VM).
-- **Firebase is optional**: The app has been patched to run in local-only mode when `VITE_FIREBASE_*` env vars are absent. Firebase features (cross-device sync, Google auth) are skipped; the app uses Zustand + localStorage instead.
+- **Firebase credentials required**: The PWA uses Firebase Auth (email/password + Google sign-in) and Firestore for cross-device sync. You must set the `VITE_FIREBASE_*` env vars for the app to work. Without them, the app will show a spinner or crash on the auth screen. The six required env vars are: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`.
 - **pnpm only**: The root `package.json` has a `preinstall` script that rejects npm/yarn. Always use pnpm.
 - **`pnpm approve-builds` is interactive**: Do not run it. The `pnpm-workspace.yaml` already has `onlyBuiltDependencies` configured for allowed packages.
 - **DATABASE_URL is required**: The API server crashes on startup without it. Use the local PostgreSQL instance.
