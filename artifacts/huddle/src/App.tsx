@@ -118,8 +118,12 @@ function AuthGate() {
     );
   }
 
-  // Not signed in — show the auth page
-  if (!user) {
+  // When Firebase is not configured (local-only mode), skip authentication
+  // and go directly to setup or main app based on profile state
+  const isLocalMode = !user && !loading;
+  
+  // Not signed in and Firebase is configured — show the auth page
+  if (!user && !isLocalMode) {
     const handleAuth = (displayName: string | null) => {
       // Pre-fill profile name from Firebase if not already set
       if (!profile?.name && displayName) {
@@ -129,10 +133,10 @@ function AuthGate() {
     return <Auth onAuth={handleAuth} />;
   }
 
-  // Signed in but no family set up — go to setup
+  // In local mode or signed in but no family set up — go to setup
   if (!profile?.family_code) {
     // Pre-fill name from Firebase user if not set
-    if (!profile?.name && user.displayName) {
+    if (!profile?.name && user?.displayName) {
       setupProfile(user.displayName);
     }
     return (
@@ -142,7 +146,7 @@ function AuthGate() {
     );
   }
 
-  // Fully authenticated + family set up
+  // Fully authenticated + family set up (or local mode with family set up)
   return (
     <AppLayout>
       <SeedLoader />
