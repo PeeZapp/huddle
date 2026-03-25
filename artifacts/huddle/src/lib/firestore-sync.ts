@@ -32,10 +32,6 @@ import { MealPlan, UserProfile, FamilyGroup, Recipe } from "./types";
 // Firestore rules must allow: read = any signed-in user, write = any signed-in user.
 
 export async function shareCommunityRecipe(recipe: Recipe): Promise<void> {
-  if (!db) {
-    console.warn("[firestore-sync] Firestore not configured, skipping shareCommunityRecipe");
-    return;
-  }
   try {
     await setDoc(
       doc(db, "community_recipes", recipe.id),
@@ -48,10 +44,6 @@ export async function shareCommunityRecipe(recipe: Recipe): Promise<void> {
 }
 
 export async function loadCommunityRecipes(): Promise<Recipe[]> {
-  if (!db) {
-    console.warn("[firestore-sync] Firestore not configured, skipping loadCommunityRecipes");
-    return [];
-  }
   try {
     const snap = await getDocs(collection(db, "community_recipes"));
     return snap.docs.map(d => d.data() as Recipe);
@@ -75,10 +67,6 @@ function userDocRef(uid: string) {
 
 export async function loadUserProfile(uid: string): Promise<UserProfileDoc | null> {
   if (!uid) return null;
-  if (!db) {
-    console.warn("[firestore-sync] Firestore not configured, skipping loadUserProfile");
-    return null;
-  }
   try {
     const snap = await getDoc(userDocRef(uid));
     if (!snap.exists()) return null;
@@ -91,10 +79,6 @@ export async function loadUserProfile(uid: string): Promise<UserProfileDoc | nul
 
 export async function saveUserProfile(uid: string, data: UserProfileDoc): Promise<void> {
   if (!uid) return;
-  if (!db) {
-    console.warn("[firestore-sync] Firestore not configured, skipping saveUserProfile");
-    return;
-  }
   try {
     await setDoc(userDocRef(uid), { ...data, updated_at: new Date().toISOString() }, { merge: true });
   } catch (err) {
@@ -115,10 +99,6 @@ export async function saveMealPlans(
   plans: Record<string, MealPlan>,
 ): Promise<void> {
   if (!familyCode) return;
-  if (!db) {
-    console.warn("[firestore-sync] Firestore not configured, skipping saveMealPlans");
-    return;
-  }
   try {
     await setDoc(
       planDocRef(familyCode),
@@ -136,10 +116,6 @@ export async function loadMealPlans(
   familyCode: string,
 ): Promise<Record<string, MealPlan> | null> {
   if (!familyCode) return null;
-  if (!db) {
-    console.warn("[firestore-sync] Firestore not configured, skipping loadMealPlans");
-    return null;
-  }
   try {
     const snap = await getDoc(planDocRef(familyCode));
     if (!snap.exists()) return null;
@@ -157,10 +133,6 @@ export function subscribeMealPlans(
   onData: (plans: Record<string, MealPlan>) => void,
 ): Unsubscribe {
   if (!familyCode) return () => {};
-  if (!db) {
-    console.warn("[firestore-sync] Firestore not configured, skipping subscribeMealPlans");
-    return () => {};
-  }
   return onSnapshot(
     planDocRef(familyCode),
     (snap) => {
