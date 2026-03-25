@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Button, Input } from "@/components/ui";
 import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
-import { MEAL_SLOTS, MealSlotKey } from "@/lib/types";
+import { MEAL_SLOTS, MealSlotKey, Recipe } from "@/lib/types";
 
 // ── AI helpers ────────────────────────────────────────────────────────────────
 
@@ -75,13 +75,21 @@ function toBool(v: unknown): boolean {
   return Boolean(v);
 }
 
-function normalize(raw: Record<string, unknown>): Record<string, unknown> {
+type RecipeDraft = Omit<Recipe, "id" | "created_at" | "family_code">;
+
+function normalize(raw: Record<string, unknown>): RecipeDraft {
   const ingredients = (Array.isArray(raw.ingredients) ? raw.ingredients : []).map((ing: unknown) => {
     const i = (typeof ing === "object" && ing !== null ? ing : { name: String(ing) }) as Record<string, unknown>;
     return { name: toStr(i.name) ?? "", amount: toStr(i.amount) ?? "", category: toStr(i.category) ?? "other" };
   });
   const method     = (Array.isArray(raw.method) ? raw.method : []).map((s: unknown) => String(s));
-  const meal_slots = Array.isArray(raw.meal_slots) ? raw.meal_slots.map(String) : ["dinner"];
+  const parsedMealSlots = Array.isArray(raw.meal_slots)
+    ? raw.meal_slots.filter((slot): slot is MealSlotKey => {
+        const value = String(slot);
+        return MEAL_SLOTS.some((candidate) => candidate.key === value);
+      })
+    : [];
+  const meal_slots: MealSlotKey[] = parsedMealSlots.length > 0 ? parsedMealSlots : ["dinner"];
 
   return {
     name:        toStr(raw.name)        ?? "Imported Recipe",
@@ -263,7 +271,7 @@ export default function ImportRecipe() {
   const [error, setError] = useState<string | undefined>();
 
   // Preview state
-  const [previewData,  setPreviewData]  = useState<Record<string, unknown> | null>(null);
+  const [previewData,  setPreviewData]  = useState<RecipeDraft | null>(null);
   const [previewSource, setPreviewSource] = useState<Source>("text-paste");
   const [previewDomain, setPreviewDomain] = useState<string | undefined>();
   const [sourceUrl, setSourceUrl]       = useState<string | undefined>();
@@ -383,7 +391,7 @@ export default function ImportRecipe() {
           ? []
           : selectedSlot
             ? [selectedSlot]
-            : (previewData.meal_slots as MealSlotKey[]) ?? ["dinner"],
+            : previewData.meal_slots ?? ["dinner"],
         family_code: familyGroup.code,
         imported: true,
         source_url: sourceUrl,

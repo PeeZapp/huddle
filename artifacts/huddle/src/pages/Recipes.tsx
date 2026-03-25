@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { Input, Button } from "@/components/ui";
 import { useRecipeStore, useFamilyStore } from "@/stores/huddle-stores";
-import { Recipe } from "@/lib/types";
+import { Recipe, MealSlotKey } from "@/lib/types";
 import { estimateRecipeCost, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
 
 // ─── Module-level fridge state (persists across route changes) ─────────────────
@@ -19,9 +19,11 @@ let _fridgePantry: string[] = [];
 // Snack slots that are collapsed into one "Snacks" filter chip
 const SNACK_SLOTS = ["morning_snack", "afternoon_snack", "night_snack"];
 
+type FilterSlot = MealSlotKey | "snack" | "base";
+
 // Display slot options — snacks collapsed to one entry
 // "base" is a special value that filters to component/base recipes
-const DISPLAY_SLOTS = [
+const DISPLAY_SLOTS: ReadonlyArray<{ value: FilterSlot; label: string }> = [
   { value: "breakfast", label: "Breakfast" },
   { value: "lunch",     label: "Lunch" },
   { value: "dinner",    label: "Dinner" },
@@ -154,7 +156,7 @@ export default function Recipes() {
 
   const [mode, setMode]         = useState<Mode>(_fridgeMode);
   const [search, setSearch]     = useState("");
-  const [filterSlot, setFilterSlot] = useState<string | null>(null);
+  const [filterSlot, setFilterSlot] = useState<FilterSlot | null>(null);
   const [filterVeg, setFilterVeg]   = useState(false);
   const [filterFavs, setFilterFavs] = useState(false);
   const [sortKey, setSortKey]       = useState<SortKey | null>(null);

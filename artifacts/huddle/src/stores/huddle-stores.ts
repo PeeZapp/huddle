@@ -297,8 +297,9 @@ export const useShoppingStore = create<ShoppingState>()(
         }[] = [];
 
         Object.entries(plan.slots).forEach(([key, slot]) => {
-          // key format: "monday_breakfast" → extract meal type
-          const mealType = key.split("_").pop() ?? "";
+          // key format: "monday_breakfast" or "monday_morning_snack"
+          // Keep everything after the first "_" so snack variants remain distinct.
+          const mealType = key.slice(key.indexOf("_") + 1) as MealSlotKey;
           if (!activeSlotSet.has(mealType)) return;
           if (slot.recipe_id) {
             const recipe = recipes.find(r => r.id === slot.recipe_id);
