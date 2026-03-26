@@ -10,6 +10,7 @@ import { getWeekStart } from "@/lib/utils";
 import { ShoppingItem } from "@/lib/types";
 import { estimateIngredientCostUSD, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
 import { format, parseISO, addDays, addWeeks, subWeeks } from "date-fns";
+import { getIngredientSubstitutes } from "@/lib/ingredient-substitutions";
 
 // ─── Category config ─────────────────────────────────────────────────────────
 
@@ -109,8 +110,11 @@ function IngredientRow({
   onRecipeClick: (recipeId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [showSubs, setShowSubs] = useState(false);
   const itemCostUSD = estimateIngredientCostUSD(item.name, item.amount);
   const hasSources  = (item.recipe_sources?.length ?? 0) > 0;
+  const substitutes = getIngredientSubstitutes(item.name);
+  const hasSubs = substitutes.length > 0;
 
   return (
     <div className="bg-white border border-border rounded-xl shadow-sm overflow-hidden">
@@ -133,6 +137,14 @@ function IngredientRow({
             >
               <Layers size={9} />
               from {item.base_recipe_name ?? "base recipe"}
+            </button>
+          )}
+          {hasSubs && (
+            <button
+              onClick={() => setShowSubs(v => !v)}
+              className="mt-0.5 text-[10px] font-bold text-primary hover:underline"
+            >
+              {showSubs ? "Hide substitutes" : "View substitutes"}
             </button>
           )}
         </div>
@@ -175,6 +187,21 @@ function IngredientRow({
               <span className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
               {src.recipe_name}
             </button>
+          ))}
+        </div>
+      )}
+
+      {showSubs && hasSubs && (
+        <div className="border-t border-border/50 bg-primary/5 px-3.5 py-2.5 space-y-1.5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1.5">
+            Substitutes
+          </p>
+          {substitutes.map((s) => (
+            <div key={s.name} className="text-xs">
+              <span className="font-semibold">{s.name}</span>
+              {s.ratio ? <span className="text-muted-foreground"> · {s.ratio}</span> : null}
+              {s.notes ? <span className="text-muted-foreground"> — {s.notes}</span> : null}
+            </div>
           ))}
         </div>
       )}

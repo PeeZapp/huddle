@@ -43,6 +43,7 @@ const SLOT_SHORT: Record<string, string> = {
 type SortKey = "alpha" | "calories" | "cost" | "cook_time" | "protein";
 type SortDir = "asc" | "desc";
 type Mode = "search" | "fridge";
+type SourceFilter = "all" | "personal_uploaded" | "community";
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "alpha",     label: "A–Z" },
@@ -157,6 +158,7 @@ export default function Recipes() {
   const [filterSlot, setFilterSlot] = useState<string | null>(null);
   const [filterVeg, setFilterVeg]   = useState(false);
   const [filterFavs, setFilterFavs] = useState(false);
+  const [filterSource, setFilterSource] = useState<SourceFilter>("all");
   const [sortKey, setSortKey]       = useState<SortKey | null>(null);
   const [sortDir, setSortDir]       = useState<SortDir>("asc");
 
@@ -189,7 +191,7 @@ export default function Recipes() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const hasActiveFilters = filterSlot !== null || filterVeg || sortKey !== null || filterFavs;
+  const hasActiveFilters = filterSlot !== null || filterVeg || sortKey !== null || filterFavs || filterSource !== "all";
 
   const handleSortClick = (key: SortKey) => {
     if (sortKey === key) {
@@ -205,6 +207,7 @@ export default function Recipes() {
     setFilterSlot(null);
     setFilterVeg(false);
     setFilterFavs(false);
+    setFilterSource("all");
     setSortKey(null);
     setSortDir("asc");
   };
@@ -249,6 +252,14 @@ export default function Recipes() {
   };
 
   const isBaseFilter = filterSlot === "base";
+  const sourceMatches = (r: Recipe) => {
+    if (filterSource === "all") return true;
+    if (filterSource === "community") {
+      return Boolean(r.is_community || r.family_code === "__community__");
+    }
+    // "My uploads": recipes imported into this family's private library.
+    return Boolean(familyGroup && r.family_code === familyGroup.code && r.imported);
+  };
 
   // ── Apply search + filters ──
   let filteredMeal = mealRecipes.filter(r => {
@@ -260,7 +271,7 @@ export default function Recipes() {
       r.ingredients?.some(i => i.name.toLowerCase().includes(q))
     );
     const matchesFav = !filterFavs || myFavs.includes(r.id);
-    return matchesSearch && slotMatches(r) && (!filterVeg || r.vegetarian) && matchesFav;
+    return matchesSearch && slotMatches(r) && (!filterVeg || r.vegetarian) && matchesFav && sourceMatches(r);
   });
 
   if (sortKey) filteredMeal = sortRecipes(filteredMeal, sortKey, sortDir, currency);
@@ -268,7 +279,8 @@ export default function Recipes() {
   const filteredBaseRecipes = baseRecipes.filter(r => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return r.name.toLowerCase().includes(q) || r.ingredients?.some(i => i.name.toLowerCase().includes(q));
+    const searchMatch = r.name.toLowerCase().includes(q) || r.ingredients?.some(i => i.name.toLowerCase().includes(q));
+    return Boolean(searchMatch && sourceMatches(r));
   });
 
   // When "Base recipes" filter is active, show base recipes in the main grid
@@ -407,6 +419,27 @@ export default function Recipes() {
 
               <div className="h-4 w-px bg-border flex-shrink-0" />
 
+              {/* Source filter */}
+              <FilterChip
+                label="All sources"
+                active={filterSource === "all"}
+                onClick={() => setFilterSource("all")}
+              />
+              <FilterChip
+                label="My uploads"
+                active={filterSource === "personal_uploaded"}
+                onClick={() => setFilterSource("personal_uploaded")}
+                icon={<Download size={11} />}
+              />
+              <FilterChip
+                label="Community"
+                active={filterSource === "community"}
+                onClick={() => setFilterSource("community")}
+                icon={<Users size={11} />}
+              />
+
+              <div className="h-4 w-px bg-border flex-shrink-0" />
+
               {SORT_OPTIONS.map(opt => (
                 <SortChip
                   key={opt.key}
@@ -488,6 +521,8 @@ export default function Recipes() {
           <p className="text-xs text-muted-foreground mb-4">
             {displayList.length} recipe{displayList.length !== 1 ? "s" : ""}
             {filterSlot ? ` · ${DISPLAY_SLOTS.find(s => s.value === filterSlot)?.label ?? filterSlot}` : ""}
+            {filterSource === "personal_uploaded" ? " · My uploads" : ""}
+            {filterSource === "community" ? " · Community" : ""}
             {filterVeg && !isBaseFilter ? " · Vegetarian" : ""}
             {sortKey && !isBaseFilter ? ` · Sorted by ${SORT_OPTIONS.find(o => o.key === sortKey)?.label} (${sortDir === "asc" ? "↑" : "↓"})` : ""}
           </p>
