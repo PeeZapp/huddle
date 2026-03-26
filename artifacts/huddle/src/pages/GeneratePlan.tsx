@@ -7,7 +7,7 @@ import {
 import { Button, Card, Badge } from "@/components/ui";
 import { useFamilyStore, useMealPlanStore, useNutritionStore, useRecipeStore } from "@/stores/huddle-stores";
 import { getWeekStart } from "@/lib/utils";
-import { MEAL_SLOTS, MealSlotKey } from "@/lib/types";
+import { DAYS, MEAL_SLOTS, MealSlotKey } from "@/lib/types";
 import { generateMealPlan, recipesForSlot, SLOT_ASSUMED, CORE_SLOTS, OPTIONAL_SLOTS, GeneratedSlot } from "@/lib/generate-plan";
 import { filterRecipesForFamily, familyRestrictions } from "@/lib/dietary";
 import { estimateRecipeCost, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
@@ -96,6 +96,16 @@ export default function GeneratePlan() {
   }
 
   function handleApply() {
+    // Regeneration should replace this week's plan, not merge into previous results.
+    // Clear all existing slots first, then apply the newly generated set.
+    Object.keys(plan.slots).forEach((key) => {
+      const [dayRaw, ...slotParts] = key.split("_");
+      const day = dayRaw as typeof DAYS[number];
+      const slot = slotParts.join("_") as MealSlotKey;
+      if (!DAYS.includes(day) || !MEAL_SLOTS.some((s) => s.key === slot)) return;
+      setSlot(weekStart, familyGroup!.code, day, slot, null);
+    });
+
     setActiveSlots(weekStart, familyGroup!.code, [...selectedSlots]);
     results.forEach(({ day, slot, recipe }) => {
       setSlot(weekStart, familyGroup!.code, day, slot, {

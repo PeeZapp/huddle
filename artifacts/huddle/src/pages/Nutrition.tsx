@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Check, Target, Trash2, Pencil, Save, Sparkles, Loader2, Scale } from "lucide-react";
 import { Button, Card } from "@/components/ui";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNutritionStore } from "@/stores/huddle-stores";
-import { DailyNutritionLog, NutritionGoalPreset, NutritionGoals, NutritionLogEntry, UserNutritionProfile } from "@/lib/types";
+import { BarcodeNutritionProduct, DailyNutritionLog, MealPhotoAnalysisResult, NutritionGoalPreset, NutritionGoals, NutritionLogEntry, UserNutritionProfile } from "@/lib/types";
 import { format, subDays } from "date-fns";
 import { useAuth } from "@/context/auth-context";
 import {
@@ -19,8 +20,11 @@ import {
 } from "@/lib/firestore-sync";
 import { generateId } from "@/lib/utils";
 import { estimateFromLocalIngredients } from "@/lib/local-nutrition";
-import { useAiMutation } from "@/hooks/use-ai";
-import { useFamilyStore } from "@/stores/huddle-stores";
+import { analyzeMealPhoto, lookupBarcode, useAiMutation } from "@/hooks/use-ai";
+import { useFamilyStore, useRecipeStore } from "@/stores/huddle-stores";
+import { MEAL_SLOTS } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 
 // ─── Presets ────────────────────────────────────────────────────────────────
 
@@ -106,11 +110,23 @@ interface ManualIngredientRow {
   unit: ManualUnit;
 }
 
+interface BarcodeHistoryItem {
+  at: string;
+  product: BarcodeNutritionProduct;
+}
+
+interface PhotoHistoryItem {
+  at: string;
+  analysis: MealPhotoAnalysisResult;
+}
+
 export default function Nutrition() {
   const [location] = useLocation();
   const { user } = useAuth();
   const setGoals = useNutritionStore((s) => s.setGoals);
   const { familyGroup } = useFamilyStore();
+  const { addRecipe } = useRecipeStore();
+  const { toast } = useToast();
   const aiMutation = useAiMutation();
 
   const [tab, setTab]             = useState<Tab>("summary");
@@ -136,7 +152,38 @@ export default function Nutrition() {
   const [weightKg, setWeightKg] = useState("");
   const [weightHistory, setWeightHistory] = useState<{ id: string; date: string; kg: number }[]>([]);
   const [estimatingError, setEstimatingError] = useState("");
+  const [barcode, setBarcode] = useState("");
+  const [barcodeLookupBusy, setBarcodeLookupBusy] = useState(false);
+  const [barcodeError, setBarcodeError] = useState("");
+  const [barcodeStatus, setBarcodeStatus] = useState("");
+  const [scannedProduct, setScannedProduct] = useState<BarcodeNutritionProduct | null>(null);
+  const [barcodeMealName, setBarcodeMealName] = useState("");
+  const [barcodeHistory, setBarcodeHistory] = useState<BarcodeHistoryItem[]>([]);
+  const [premadeSlot, setPremadeSlot] = useState(MEAL_SLOTS[0].key);
+  const [isCameraScanOpen, setIsCameraScanOpen] = useState(false);
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+  const [cameraScanError, setCameraScanError] = useState("");
+  const [cameraScanStatus, setCameraScanStatus] = useState("");
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoResult, setPhotoResult] = useState<MealPhotoAnalysisResult | null>(null);
+  const [photoError, setPhotoError] = useState("");
+  const [photoMealNameDraft, setPhotoMealNameDraft] = useState("");
+  const [photoCaloriesDraft, setPhotoCaloriesDraft] = useState("");
+  const [photoProteinDraft, setPhotoProteinDraft] = useState("");
+  const [photoCarbsDraft, setPhotoCarbsDraft] = useState("");
+  const [photoFatDraft, setPhotoFatDraft] = useState("");
+  const [photoHistory, setPhotoHistory] = useState<PhotoHistoryItem[]>([]);
+  const [photoHint, setPhotoHint] = useState("");
+  const [photoFileName, setPhotoFileName] = useState("");
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const PHOTO_ANALYSIS_REQUIRES_CREDITS = false;
   const autoSaveTimerRef = useRef<number | null>(null);
+  const barcodeVideoRef = useRef<HTMLVideoElement | null>(null);
+  const barcodeStreamRef = useRef<MediaStream | null>(null);
+  const zxingReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  const zxingControlsRef = useRef<{ stop: () => void } | null>(null);
+  const scanInFlightRef = useRef(false);
   const SELF_MEMBER_ID = "__self__";
 
   const todayStr  = format(new Date(), "yyyy-MM-dd");
@@ -145,6 +192,25 @@ export default function Nutrition() {
     () => Array.from({ length: 7 }, (_, i) => format(subDays(new Date(), 6 - i), "yyyy-MM-dd")),
     [],
   );
+
+  useEffect(() => {
+    try {
+      const rawBarcodes = localStorage.getItem("huddle-barcode-history");
+      const rawPhotos = localStorage.getItem("huddle-photo-analysis-history");
+      if (rawBarcodes) setBarcodeHistory(JSON.parse(rawBarcodes) as BarcodeHistoryItem[]);
+      if (rawPhotos) setPhotoHistory(JSON.parse(rawPhotos) as PhotoHistoryItem[]);
+    } catch {
+      // ignore local storage parse errors
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("huddle-barcode-history", JSON.stringify(barcodeHistory.slice(0, 10)));
+  }, [barcodeHistory]);
+
+  useEffect(() => {
+    localStorage.setItem("huddle-photo-analysis-history", JSON.stringify(photoHistory.slice(0, 10)));
+  }, [photoHistory]);
 
   useEffect(() => {
     const query = location.includes("?") ? location.slice(location.indexOf("?")) : "";
@@ -366,6 +432,264 @@ export default function Nutrition() {
     setMealName(""); setCal(""); setProt(""); setCarbs(""); setFat(""); setMealNote("");
     setIsEditingId(null);
     setManualIngredients([{ id: crypto.randomUUID(), name: "", amount: "100", unit: "g" }]);
+  }
+
+  async function handleLookupBarcode() {
+    if (!barcode.trim()) return;
+    setBarcodeLookupBusy(true);
+    setBarcodeError("");
+    setBarcodeStatus("Looking up barcode...");
+    try {
+      const product = await lookupBarcode(barcode.trim());
+      setScannedProduct(product);
+      setBarcodeMealName(product.name);
+      setMealName(product.name);
+      setCal(String(product.calories ?? 0));
+      setProt(String(product.protein ?? 0));
+      setCarbs(String(product.carbs ?? 0));
+      setFat(String(product.fat ?? 0));
+      setBarcodeHistory((prev) => [{ at: new Date().toISOString(), product }, ...prev.filter((p) => p.product.barcode !== product.barcode)].slice(0, 10));
+      setBarcodeStatus(`Found: ${product.name}`);
+      toast({ title: "Barcode found", description: `${product.name} loaded into your log form.` });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Barcode lookup failed.";
+      setBarcodeError(message);
+      setBarcodeStatus("");
+      toast({ title: "Barcode not found", description: "Try another barcode or enter details manually." });
+    } finally {
+      setBarcodeLookupBusy(false);
+    }
+  }
+
+  function isLikelyBarcode(raw: string): boolean {
+    const trimmed = raw.trim();
+    // Common retail barcode lengths (EAN-8, UPC-A, EAN-13, ITF-14)
+    return /^\d{8,14}$/.test(trimmed);
+  }
+
+  async function handleScannedBarcode(code: string) {
+    if (scanInFlightRef.current) return;
+    scanInFlightRef.current = true;
+    setBarcodeLookupBusy(true);
+    try {
+      setBarcode(code);
+      const product = await lookupBarcode(code);
+      setScannedProduct(product);
+      setBarcodeMealName(product.name);
+      setMealName(product.name);
+      setCal(String(product.calories ?? 0));
+      setProt(String(product.protein ?? 0));
+      setCarbs(String(product.carbs ?? 0));
+      setFat(String(product.fat ?? 0));
+      setBarcodeHistory((prev) => [{ at: new Date().toISOString(), product }, ...prev.filter((p) => p.product.barcode !== product.barcode)].slice(0, 10));
+      toast({ title: "Barcode scanned", description: `${product.name} loaded.` });
+      setCameraScanStatus("Barcode detected");
+      setIsCameraScanOpen(false);
+    } catch {
+      setCameraScanError("Barcode detected but no product match found. Keep scanning or enter barcode manually.");
+    } finally {
+      setBarcodeLookupBusy(false);
+      scanInFlightRef.current = false;
+    }
+  }
+
+  useEffect(() => {
+    if (!isCameraScanOpen) {
+      if (barcodeStreamRef.current) {
+        barcodeStreamRef.current.getTracks().forEach((t) => t.stop());
+        barcodeStreamRef.current = null;
+      }
+      if (zxingControlsRef.current) {
+        zxingControlsRef.current.stop();
+        zxingControlsRef.current = null;
+      }
+      if (zxingReaderRef.current) {
+        zxingReaderRef.current = null;
+      }
+      setCameraScanStatus("");
+      setCameraScanError("");
+      return;
+    }
+
+    let intervalId: number | null = null;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setCameraScanError("");
+        setCameraScanStatus("Opening camera...");
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
+        if (cancelled) return;
+        barcodeStreamRef.current = stream;
+        if (barcodeVideoRef.current) {
+          barcodeVideoRef.current.srcObject = stream;
+          await barcodeVideoRef.current.play();
+        }
+        setCameraScanStatus("Point camera at barcode");
+
+        const DetectorCtor = (window as Window & { BarcodeDetector?: new () => { detect: (source: ImageBitmapSource) => Promise<Array<{ rawValue?: string }>> } }).BarcodeDetector;
+        if (DetectorCtor) {
+          const detector = new DetectorCtor();
+          intervalId = window.setInterval(async () => {
+            if (!barcodeVideoRef.current) return;
+            try {
+              const codes = await detector.detect(barcodeVideoRef.current);
+              const code = codes[0]?.rawValue?.trim();
+              if (!code || !isLikelyBarcode(code)) return;
+              await handleScannedBarcode(code);
+            } catch {
+              // keep scanning; errors while detecting are expected frame-to-frame
+            }
+          }, 700);
+          return;
+        }
+
+        setCameraScanStatus("Using fallback scanner...");
+        setCameraScanError("");
+        if (!barcodeVideoRef.current) {
+          setCameraScanError("Video preview failed to initialize.");
+          return;
+        }
+        const reader = new BrowserMultiFormatReader();
+        zxingReaderRef.current = reader;
+        const controls = await reader.decodeFromVideoDevice(undefined, barcodeVideoRef.current, (result) => {
+          const code = result?.getText?.().trim();
+          if (!code || !isLikelyBarcode(code)) return;
+          void handleScannedBarcode(code);
+        });
+        zxingControlsRef.current = controls;
+      } catch {
+        toast({ title: "Camera unavailable", description: "Could not access camera. Check permissions and try again." });
+        setCameraScanError("Could not access camera. Check browser camera permissions.");
+        setIsCameraScanOpen(false);
+      } finally {
+        setBarcodeLookupBusy(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (intervalId) window.clearInterval(intervalId);
+      if (barcodeStreamRef.current) {
+        barcodeStreamRef.current.getTracks().forEach((t) => t.stop());
+        barcodeStreamRef.current = null;
+      }
+      if (zxingControlsRef.current) {
+        zxingControlsRef.current.stop();
+        zxingControlsRef.current = null;
+      }
+      if (zxingReaderRef.current) {
+        zxingReaderRef.current = null;
+      }
+    };
+  }, [isCameraScanOpen, toast]);
+
+  function addScannedAsPremadeRecipe() {
+    if (!scannedProduct || !familyGroup?.code) return;
+    const displayName = barcodeMealName.trim() || scannedProduct.name;
+    const name = scannedProduct.brand ? `${displayName} (${scannedProduct.brand})` : displayName;
+    addRecipe({
+      name,
+      emoji: "🥡",
+      family_code: "global",
+      calories: scannedProduct.calories ?? 0,
+      protein: scannedProduct.protein ?? 0,
+      carbs: scannedProduct.carbs ?? 0,
+      fat: scannedProduct.fat ?? 0,
+      cook_time: 0,
+      meal_slots: [premadeSlot],
+      ingredients: [{ name: scannedProduct.name, amount: scannedProduct.serving_size || "1 serving", category: "other" }],
+      method: ["Premade item added from barcode scan."],
+      imported: true,
+    });
+    toast({ title: "Premade item added", description: `Added as global premade item for ${MEAL_SLOTS.find((s) => s.key === premadeSlot)?.label}.` });
+  }
+
+  async function handleMealPhotoUpload(file: File) {
+    setPhotoBusy(true);
+    setPhotoError("");
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("Read failed"));
+        reader.readAsDataURL(file);
+      });
+
+      // Normalize/resize to a browser-friendly JPEG payload for AI vision APIs.
+      const normalizedDataUrl = await new Promise<string>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxSize = 1280;
+          const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+          const width = Math.max(1, Math.round(img.width * scale));
+          const height = Math.max(1, Math.round(img.height * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Image processing unavailable in this browser"));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          const out = canvas.toDataURL("image/jpeg", 0.82);
+          resolve(out);
+        };
+        img.onerror = () => reject(new Error("Unsupported image format. Try JPG or PNG."));
+        img.src = dataUrl;
+      });
+      const analysis = await analyzeMealPhoto(normalizedDataUrl, photoHint, 999999);
+      setPhotoResult(analysis.result);
+      setPhotoMealNameDraft(analysis.result.meal_name || "");
+      setPhotoCaloriesDraft(String(analysis.result.calories || 0));
+      setPhotoProteinDraft(String(analysis.result.protein || 0));
+      setPhotoCarbsDraft(String(analysis.result.carbs || 0));
+      setPhotoFatDraft(String(analysis.result.fat || 0));
+      setMealName(analysis.result.meal_name || mealName);
+      setCal(String(analysis.result.calories || 0));
+      setProt(String(analysis.result.protein || 0));
+      setCarbs(String(analysis.result.carbs || 0));
+      setFat(String(analysis.result.fat || 0));
+      setPhotoHistory((prev) => [{ at: new Date().toISOString(), analysis: analysis.result }, ...prev].slice(0, 10));
+      toast({ title: "Meal analyzed", description: "Prediction loaded. Edit values if needed before logging." });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Try another image or enter values manually.";
+      setPhotoError(message);
+      toast({ title: "Photo analysis failed", description: message });
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  async function handleConfirmPhotoAnalysis() {
+    if (!selectedPhotoFile) {
+      setPhotoError("Select an image first.");
+      return;
+    }
+    await handleMealPhotoUpload(selectedPhotoFile);
+  }
+
+  function addBarcodeToFoodLogForm() {
+    if (!scannedProduct) return;
+    setMealName((barcodeMealName || scannedProduct.name).trim());
+    setCal(String(scannedProduct.calories ?? 0));
+    setProt(String(scannedProduct.protein ?? 0));
+    setCarbs(String(scannedProduct.carbs ?? 0));
+    setFat(String(scannedProduct.fat ?? 0));
+    setIsBarcodeModalOpen(false);
+  }
+
+  function addPhotoAnalysisToFoodLogForm() {
+    setMealName(photoMealNameDraft.trim() || photoResult?.meal_name || "Meal");
+    setCal(photoCaloriesDraft);
+    setProt(photoProteinDraft);
+    setCarbs(photoCarbsDraft);
+    setFat(photoFatDraft);
+    setIsPhotoModalOpen(false);
   }
 
   async function handleDeleteLog(entryId: string) {
@@ -634,7 +958,7 @@ export default function Nutrition() {
         {tab === "summary" && !loading && (
           <>
             <h2 className="font-semibold text-muted-foreground text-sm uppercase tracking-wider">
-              Today's Progress
+              {selectedDate === todayStr ? "Today's Progress" : `Progress for ${selectedDate}`}
             </h2>
 
             <Card className="flex items-center gap-4">
@@ -720,13 +1044,22 @@ export default function Nutrition() {
                   const protPct = Math.min(100, Math.round((totals.protein / Math.max(draft.protein, 1)) * 100));
                   const hit = totals.calories > 0 && calPct <= 105 && protPct >= 90;
                   return (
-                    <div key={d} className={`h-16 rounded-md border px-1 pt-1 flex flex-col justify-end text-[9px] ${hit ? "bg-green-50 border-green-300" : "bg-secondary/40 border-border"}`}>
+                    <button
+                      type="button"
+                      key={d}
+                      onClick={() => setSelectedDate(d)}
+                      className={`h-16 rounded-md border px-1 pt-1 flex flex-col justify-end text-[9px] ${
+                        selectedDate === d
+                          ? "ring-1 ring-primary border-primary/50 bg-primary/5"
+                          : hit ? "bg-green-50 border-green-300" : "bg-secondary/40 border-border"
+                      }`}
+                    >
                       <div className="h-8 bg-white/70 rounded-sm overflow-hidden mb-1">
                         <div className="bg-amber-300" style={{ height: `${Math.max(calPct / 2, 2)}%` }} />
                         <div className="bg-primary/70" style={{ height: `${Math.max(protPct / 2, 2)}%` }} />
                       </div>
                       <span className="text-center">{format(new Date(d), "EEE")}</span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -754,6 +1087,15 @@ export default function Nutrition() {
               onSubmit={handleAddLog}
               className="bg-white p-4 rounded-2xl border border-border space-y-3 min-w-0 max-w-full overflow-x-hidden"
             >
+              <div className="flex flex-col gap-2">
+                <Button type="button" variant="outline" className="w-full" onClick={() => setIsBarcodeModalOpen(true)}>
+                  Scan Barcode
+                </Button>
+                <Button type="button" variant="outline" className="w-full" onClick={() => setIsPhotoModalOpen(true)}>
+                  Upload Meal Photo
+                </Button>
+              </div>
+
               <input
                 className="w-full border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary"
                 placeholder="What did you eat?"
@@ -820,38 +1162,50 @@ export default function Nutrition() {
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-3 min-w-0">
-                <input
-                  type="number"
-                  className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
-                  placeholder="Calories"
-                  value={cal}
-                  onChange={e => setCal(e.target.value)}
-                  inputMode="decimal"
-                />
-                <input
-                  type="number"
-                  className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
-                  placeholder="Protein (g)"
-                  value={prot}
-                  onChange={e => setProt(e.target.value)}
-                  inputMode="decimal"
-                />
-                <input
-                  type="number"
-                  className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
-                  placeholder="Carbs (g)"
-                  value={carbs}
-                  onChange={e => setCarbs(e.target.value)}
-                  inputMode="decimal"
-                />
-                <input
-                  type="number"
-                  className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
-                  placeholder="Fat (g)"
-                  value={fat}
-                  onChange={e => setFat(e.target.value)}
-                  inputMode="decimal"
-                />
+                <label className="space-y-1">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Calories (kcal)</span>
+                  <input
+                    type="number"
+                    className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
+                    placeholder="Calories"
+                    value={cal}
+                    onChange={e => setCal(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Protein (g)</span>
+                  <input
+                    type="number"
+                    className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
+                    placeholder="Protein"
+                    value={prot}
+                    onChange={e => setProt(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Carbs (g)</span>
+                  <input
+                    type="number"
+                    className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
+                    placeholder="Carbs"
+                    value={carbs}
+                    onChange={e => setCarbs(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Fat (g)</span>
+                  <input
+                    type="number"
+                    className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
+                    placeholder="Fat"
+                    value={fat}
+                    onChange={e => setFat(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </label>
               </div>
               {estimatingError && <p className="text-xs text-destructive">{estimatingError}</p>}
               <div className="flex gap-2">
@@ -872,6 +1226,130 @@ export default function Nutrition() {
                 )}
               </div>
             </form>
+
+            <Dialog open={isPhotoModalOpen} onOpenChange={setIsPhotoModalOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Upload Meal Photo</DialogTitle>
+                  <DialogDescription>
+                    AI action: this analysis may consume credits when paid mode is enabled.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <input
+                    className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white"
+                    placeholder="Optional hint (e.g. chicken burrito bowl)"
+                    value={photoHint}
+                    onChange={(e) => setPhotoHint(e.target.value)}
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setPhotoFileName(file.name);
+                      setSelectedPhotoFile(file);
+                      setPhotoError("");
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={photoBusy || !selectedPhotoFile}
+                    onClick={() => { void handleConfirmPhotoAnalysis(); }}
+                  >
+                    {photoBusy ? "Analyzing..." : "Use AI to analyze"}
+                  </Button>
+                  {photoError && <p className="text-xs text-destructive">{photoError}</p>}
+                  {photoResult && (
+                    <div className="space-y-3 border border-border rounded-xl p-3 bg-secondary/20">
+                      <input className="w-full border rounded-xl px-3 py-2 text-sm bg-white" value={photoMealNameDraft} onChange={(e) => setPhotoMealNameDraft(e.target.value)} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Calories" value={photoCaloriesDraft} onChange={(e) => setPhotoCaloriesDraft(e.target.value)} />
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Protein" value={photoProteinDraft} onChange={(e) => setPhotoProteinDraft(e.target.value)} />
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Carbs" value={photoCarbsDraft} onChange={(e) => setPhotoCarbsDraft(e.target.value)} />
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Fat" value={photoFatDraft} onChange={(e) => setPhotoFatDraft(e.target.value)} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="gap-2 sm:justify-center">
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsPhotoModalOpen(false)}>Cancel</Button>
+                  <Button type="button" className="w-full sm:w-auto" onClick={addPhotoAnalysisToFoodLogForm} disabled={!photoResult}>Add to food log</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isBarcodeModalOpen} onOpenChange={(open) => {
+              setIsBarcodeModalOpen(open);
+              if (!open) setIsCameraScanOpen(false);
+            }}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Scan Barcode</DialogTitle>
+                  <DialogDescription>
+                    Scan with camera or enter a barcode manually.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                    <input
+                      className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white"
+                      placeholder="Enter barcode"
+                      value={barcode}
+                      onChange={(e) => setBarcode(e.target.value)}
+                    />
+                    <Button type="button" variant="outline" onClick={() => { void handleLookupBarcode(); }} disabled={barcodeLookupBusy || !barcode.trim()}>
+                      {barcodeLookupBusy ? "Looking..." : "Lookup"}
+                    </Button>
+                  </div>
+                  <Button type="button" variant="outline" className="w-full" onClick={() => setIsCameraScanOpen((v) => !v)}>
+                    {isCameraScanOpen ? "Stop camera scan" : "Use camera"}
+                  </Button>
+                  {isCameraScanOpen && (
+                    <>
+                      <video ref={barcodeVideoRef} className="w-full rounded-lg border border-border bg-black/5" muted playsInline />
+                      {cameraScanStatus && <p className="text-xs text-muted-foreground">{cameraScanStatus}</p>}
+                      {cameraScanError && <p className="text-xs text-destructive">{cameraScanError}</p>}
+                    </>
+                  )}
+                  {barcodeStatus && <p className="text-xs text-muted-foreground">{barcodeStatus}</p>}
+                  {barcodeError && <p className="text-xs text-destructive">{barcodeError}</p>}
+                  {scannedProduct && (
+                    <div className="space-y-3 border border-border rounded-xl p-3 bg-secondary/20">
+                      <input
+                        className="w-full border rounded-xl px-3 py-2 text-sm bg-white"
+                        value={barcodeMealName}
+                        onChange={(e) => setBarcodeMealName(e.target.value)}
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Calories" value={String(scannedProduct.calories ?? 0)} onChange={(e) => setScannedProduct((p) => p ? { ...p, calories: Number(e.target.value) || 0 } : p)} />
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Protein" value={String(scannedProduct.protein ?? 0)} onChange={(e) => setScannedProduct((p) => p ? { ...p, protein: Number(e.target.value) || 0 } : p)} />
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Carbs" value={String(scannedProduct.carbs ?? 0)} onChange={(e) => setScannedProduct((p) => p ? { ...p, carbs: Number(e.target.value) || 0 } : p)} />
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Fat" value={String(scannedProduct.fat ?? 0)} onChange={(e) => setScannedProduct((p) => p ? { ...p, fat: Number(e.target.value) || 0 } : p)} />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2 items-center">
+                        <select
+                          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                          value={premadeSlot}
+                          onChange={(e) => setPremadeSlot(e.target.value as typeof premadeSlot)}
+                        >
+                          {MEAL_SLOTS.map((slot) => <option key={slot.key} value={slot.key}>{slot.label}</option>)}
+                        </select>
+                        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={addScannedAsPremadeRecipe}>Add as premade recipe</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="gap-2 sm:justify-center">
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsBarcodeModalOpen(false)}>Cancel</Button>
+                  <Button type="button" className="w-full sm:w-auto" onClick={addBarcodeToFoodLogForm} disabled={!scannedProduct}>Add to food log</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             <div className="space-y-2">
               <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wider">

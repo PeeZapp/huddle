@@ -113,6 +113,7 @@ function IngredientRow({
   const [showSubs, setShowSubs] = useState(false);
   const itemCostUSD = estimateIngredientCostUSD(item.name, item.amount);
   const hasSources  = (item.recipe_sources?.length ?? 0) > 0;
+  const isSharedAcrossMeals = (item.shared_meal_count ?? 0) > 1;
   const substitutes = getIngredientSubstitutes(item.name);
   const hasSubs = substitutes.length > 0;
 
@@ -128,6 +129,11 @@ function IngredientRow({
             <span className="font-medium text-sm">{item.name}</span>
             {item.amount && (
               <span className="text-xs font-normal text-muted-foreground">{item.amount}</span>
+            )}
+            {isSharedAcrossMeals && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                Shared across {item.shared_meal_count} meals
+              </span>
             )}
           </div>
           {item.is_base_recipe && item.base_recipe_id && (

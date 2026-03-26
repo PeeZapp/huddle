@@ -38,10 +38,11 @@ const COUNTRIES = [
 interface MemberFormState {
   name: string;
   type: FamilyMember["type"];
+  birthday?: string;
   dietary: string[];
 }
 
-const emptyForm = (): MemberFormState => ({ name: "", type: "adult", dietary: [] });
+const emptyForm = (): MemberFormState => ({ name: "", type: "adult", birthday: "", dietary: [] });
 
 function MemberForm({
   initial,
@@ -101,6 +102,18 @@ function MemberForm({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Birthday */}
+      <div>
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+          Birthday
+        </label>
+        <Input
+          type="date"
+          value={form.birthday ?? ""}
+          onChange={e => setForm(f => ({ ...f, birthday: e.target.value }))}
+        />
       </div>
 
       {/* Dietary restrictions */}
@@ -167,6 +180,7 @@ function MemberCard({
           <div>
             <p className="font-semibold">{member.name}</p>
             <p className="text-xs text-muted-foreground">{typeInfo?.label}</p>
+            {member.birthday && <p className="text-[11px] text-muted-foreground">Birthday: {member.birthday}</p>}
           </div>
         </div>
         <div className="flex gap-1">
@@ -356,7 +370,7 @@ export default function Family() {
               editingId === m.id ? (
                 <MemberForm
                   key={m.id}
-                  initial={{ name: m.name, type: m.type, dietary: m.dietary ?? [] }}
+                  initial={{ name: m.name, type: m.type, birthday: m.birthday, dietary: m.dietary ?? [] }}
                   onSave={saveMember}
                   onCancel={() => setEditingId(null)}
                 />

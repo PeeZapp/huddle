@@ -7,7 +7,7 @@
     "dev:check": "node ./scripts/check-dev-setup.mjs",
     "dev:api": "cross-env PORT=8080 DATABASE_URL=postgresql://ubuntu:ubuntu@localhost:5432/huddle pnpm --filter @workspace/api-server run dev",
     "dev:web": "cross-env PORT=5173 pnpm --filter @workspace/huddle run dev",
-    "dev": "npm run dev:check && concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev": "node ./scripts/dev.mjs",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"

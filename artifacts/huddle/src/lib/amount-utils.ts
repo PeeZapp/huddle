@@ -27,19 +27,26 @@ const UNIT_MAP: Record<string, string> = {
 
 // Units that can be converted into a common base for summing
 const WEIGHT_UNITS   = new Set(["g", "kg"]);
-const VOLUME_UNITS   = new Set(["ml", "l"]);
-const SPOON_UNITS    = new Set(["tsp", "tbsp"]);
+const VOLUME_UNITS   = new Set(["ml", "l", "tsp", "tbsp", "cup"]);
 
 function normaliseUnit(raw: string): string {
   return UNIT_MAP[raw.toLowerCase().trim()] ?? raw.toLowerCase().trim();
 }
 
-// Convert to a base unit for summing (g for weight, ml for volume)
-function toBase(value: number, unit: string): { value: number; base: string } | null {
-  if (unit === "g")    return { value, base: "g" };
-  if (unit === "kg")   return { value: value * 1000, base: "g" };
-  if (unit === "ml")   return { value, base: "ml" };
-  if (unit === "l")    return { value: value * 1000, base: "ml" };
+function toWeightGrams(value: number, unit: string): number | null {
+  if (unit === "g") return value;
+  if (unit === "kg") return value * 1000;
+  if (unit === "oz") return value * 28.3495;
+  if (unit === "lb") return value * 453.592;
+  return null;
+}
+
+function toVolumeMl(value: number, unit: string): number | null {
+  if (unit === "ml") return value;
+  if (unit === "l") return value * 1000;
+  if (unit === "tsp") return value * 5;
+  if (unit === "tbsp") return value * 15;
+  if (unit === "cup") return value * 240;
   return null;
 }
 
@@ -58,16 +65,73 @@ function formatBase(value: number, base: string): string {
   return `${value}${base}`;
 }
 
+function inferDensityGPerMl(ingredientName?: string, category?: string): number {
+  const name = (ingredientName ?? "").toLowerCase();
+  const cat = (category ?? "").toLowerCase();
+
+  const DENSITY_BY_KEYWORD: Array<[string, number]> = [
+    ["olive oil", 0.91],
+    ["oil", 0.92],
+    ["honey", 1.42],
+    ["syrup", 1.33],
+    ["milk", 1.03],
+    ["cream", 1.0],
+    ["soy sauce", 1.17],
+    ["vinegar", 1.01],
+    ["water", 1.0],
+    ["flour", 0.53],
+    ["sugar", 0.85],
+    ["brown sugar", 0.72],
+    ["salt", 1.2],
+    ["rice", 0.8],
+    ["oats", 0.41],
+  ];
+  for (const [kw, density] of DENSITY_BY_KEYWORD) {
+    if (name.includes(kw)) return density;
+  }
+
+  // Fallback heuristic by category.
+  if (cat.includes("condiment") || cat.includes("liquid")) return 1.0;
+  if (cat.includes("dairy")) return 1.0;
+  if (cat.includes("grain")) return 0.7;
+  return 1.0;
+}
+
+function isLikelyLiquid(ingredientName?: string, category?: string): boolean {
+  const name = (ingredientName ?? "").toLowerCase();
+  const cat = (category ?? "").toLowerCase();
+  if (cat.includes("condiment") || cat.includes("liquid") || cat.includes("drink")) return true;
+  return [
+    "oil", "milk", "cream", "water", "juice", "vinegar", "soy sauce", "broth", "stock",
+  ].some((k) => name.includes(k));
+}
+
 // Parse a single amount string → { value, unit, raw }
 export function parseAmount(raw: string | undefined): ParsedAmount | null {
   if (!raw || !raw.trim()) return null;
-  const str = raw.trim();
-  // Match: optional number (int or decimal), optional unit text
-  const m = str.match(/^(\d+\.?\d*)\s*(.*)$/);
-  if (!m) return null;
-  const value = parseFloat(m[1]);
-  if (isNaN(value)) return null;
-  const unit = normaliseUnit(m[2].trim());
+  const str = raw.trim().toLowerCase();
+
+  // Support: "1/2 cup", "0.5 cup", "about 60g", "60 g chicken", etc.
+  const numberMatch = str.match(/(\d+\s*\/\s*\d+|\d*\.?\d+)/);
+  if (!numberMatch) return null;
+
+  let value = 0;
+  const token = numberMatch[1].replace(/\s+/g, "");
+  if (token.includes("/")) {
+    const [num, den] = token.split("/");
+    const n = Number(num);
+    const d = Number(den);
+    if (!Number.isFinite(n) || !Number.isFinite(d) || d === 0) return null;
+    value = n / d;
+  } else {
+    value = Number(token);
+  }
+  if (!Number.isFinite(value)) return null;
+
+  // Pick first likely unit token immediately after the numeric token.
+  const tail = str.slice((numberMatch.index ?? 0) + numberMatch[0].length);
+  const unitTokenMatch = tail.match(/([a-zA-Z]+)/);
+  const unit = normaliseUnit(unitTokenMatch?.[1] ?? "");
   return { value, unit, raw: str };
 }
 
@@ -91,8 +155,8 @@ export function combineAmounts(amounts: (string | undefined)[]): string | undefi
   // Mixed but all weight — convert to g then format
   if (units.every(u => WEIGHT_UNITS.has(u))) {
     const totalG = parsed.reduce((s, p) => {
-      const b = toBase(p.value, p.unit);
-      return s + (b ? b.value : 0);
+      const g = toWeightGrams(p.value, p.unit);
+      return s + (g ?? 0);
     }, 0);
     return formatBase(totalG, "g");
   }
@@ -100,8 +164,8 @@ export function combineAmounts(amounts: (string | undefined)[]): string | undefi
   // Mixed but all volume — convert to ml then format
   if (units.every(u => VOLUME_UNITS.has(u))) {
     const totalMl = parsed.reduce((s, p) => {
-      const b = toBase(p.value, p.unit);
-      return s + (b ? b.value : 0);
+      const ml = toVolumeMl(p.value, p.unit);
+      return s + (ml ?? 0);
     }, 0);
     return formatBase(totalMl, "ml");
   }
@@ -130,7 +194,38 @@ export function deduplicateIngredients(all: FlatIngredient[]): FlatIngredient[] 
   const result: FlatIngredient[] = [];
   for (const [, group] of map) {
     const representative = group[0];
-    const combined = combineAmounts(group.map(g => g.amount));
+    const parsed = group.map(g => parseAmount(g.amount)).filter(Boolean) as ParsedAmount[];
+    const units = [...new Set(parsed.map((p) => p.unit))];
+    const hasWeight = units.some((u) => WEIGHT_UNITS.has(u) || u === "oz" || u === "lb");
+    const hasVolume = units.some((u) => VOLUME_UNITS.has(u));
+    const density = inferDensityGPerMl(representative.name, representative.category);
+    const liquid = isLikelyLiquid(representative.name, representative.category);
+
+    let combined: string | undefined;
+    if (parsed.length > 0 && hasWeight && hasVolume) {
+      if (liquid) {
+        // Liquid preference: convert everything to ml.
+        const totalMl = parsed.reduce((sum, p) => {
+          const ml = toVolumeMl(p.value, p.unit);
+          if (ml !== null) return sum + ml;
+          const g = toWeightGrams(p.value, p.unit);
+          return sum + (g !== null ? g / Math.max(density, 0.01) : 0);
+        }, 0);
+        combined = formatBase(totalMl, "ml");
+      } else {
+        // Solid preference: convert everything to grams.
+        const totalG = parsed.reduce((sum, p) => {
+          const g = toWeightGrams(p.value, p.unit);
+          if (g !== null) return sum + g;
+          const ml = toVolumeMl(p.value, p.unit);
+          return sum + (ml !== null ? ml * density : 0);
+        }, 0);
+        combined = formatBase(totalG, "g");
+      }
+    } else {
+      combined = combineAmounts(group.map(g => g.amount));
+    }
+
     result.push({
       name:     representative.name,
       amount:   combined,

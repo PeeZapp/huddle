@@ -95,13 +95,36 @@ export interface ShoppingItem {
   base_recipe_name?: string;   // display name of the source base recipe
   /** Which meal-plan recipes this ingredient appears in (populated by generateFromPlan) */
   recipe_sources?: Array<{ recipe_id: string; recipe_name: string }>;
+  /** Number of meal slots in the current week that use this ingredient */
+  shared_meal_count?: number;
 }
 
 export interface FamilyMember {
   id: string;
   name: string;
   type: "adult" | "teen" | "child" | "toddler" | "baby";
+  birthday?: string; // yyyy-mm-dd
   dietary?: string[]; // restriction ids from DIETARY_OPTIONS
+}
+
+export type CalendarRecurrence = "none" | "daily" | "weekly" | "monthly" | "yearly";
+
+export interface FamilyCalendarEvent {
+  id: string;
+  family_code: string;
+  title: string;
+  notes?: string;
+  start_date: string; // yyyy-mm-dd
+  end_date?: string; // yyyy-mm-dd
+  all_day: boolean;
+  recurrence: CalendarRecurrence;
+  visible_to_member_ids?: string[]; // empty/undefined => whole family
+  alerts_enabled?: boolean;
+  created_by_id?: string;
+  source?: "manual" | "public_holiday" | "school_holiday" | "birthday" | "google" | "apple";
+  external_id?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface FamilyGroup {
@@ -184,12 +207,59 @@ export interface FoodLog {
   created_at: string;
 }
 
+export interface BarcodeNutritionProduct {
+  barcode: string;
+  name: string;
+  brand?: string;
+  serving_size?: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+}
+
 export interface CustomList {
   id: string;
   family_code: string;
   title: string;
-  items: { id: string; text: string; checked: boolean }[];
+  emoji?: string;
+  visible_to_member_ids?: string[]; // family member/profile ids allowed to view this list
+  created_by_id?: string;
+  items: {
+    id: string;
+    text: string;
+    checked: boolean;
+    notes?: string;
+    assignee_id?: string;
+    due_date?: string; // yyyy-mm-dd
+    priority?: "low" | "medium" | "high";
+    calendar_event_id?: string;
+    calendar_alerts_enabled?: boolean;
+    created_at?: string;
+    completed_at?: string;
+  }[];
   created_at: string;
+}
+
+export interface AppNotification {
+  id: string;
+  family_code: string;
+  recipient_id: string;
+  type: "list_assigned" | "list_due_soon" | "list_overdue" | "general";
+  title: string;
+  body?: string;
+  link_path?: string;
+  entity_type?: "list" | "list_item";
+  entity_id?: string;
+  read: boolean;
+  created_at: string;
+}
+
+export interface NotificationPrefs {
+  list_assigned: boolean;
+  list_due_soon: boolean;
+  list_overdue: boolean;
+  push_enabled: boolean;
 }
 
 export interface UserProfile {
@@ -197,4 +267,14 @@ export interface UserProfile {
   name: string;
   family_code?: string;
   created_at: string;
+}
+
+export interface MealPhotoAnalysisResult {
+  meal_name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  confidence?: number;
+  notes?: string;
 }

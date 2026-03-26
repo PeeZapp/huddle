@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { loadUserProfile } from "@/lib/firestore-sync";
-import { useFamilyStore } from "@/stores/huddle-stores";
+import { loadNutritionProfile, loadUserProfile } from "@/lib/firestore-sync";
+import { useFamilyStore, useNutritionStore } from "@/stores/huddle-stores";
 
 interface AuthContextValue {
   user: User | null;
@@ -19,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileLoading, setProfileLoading] = useState(true);
 
   const { _applyRemoteProfile } = useFamilyStore();
+  const setNutritionGoals = useNutritionStore((s) => s.setGoals);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -38,6 +39,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (remote?.profile) {
           _applyRemoteProfile(remote.profile, remote.familyGroup ?? null);
         }
+        // Hydrate nutrition goals immediately after sign-in so all pages
+        // read the same goal values without needing to open Nutrition first.
+        const nutritionProfile = await loadNutritionProfile(firebaseUser.uid);
+        setNutritionGoals(nutritionProfile.goals);
       } finally {
         setProfileLoading(false);
       }

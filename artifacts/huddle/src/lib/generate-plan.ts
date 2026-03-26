@@ -95,6 +95,42 @@ export interface GeneratedSlot {
   targetProtein:  number;
 }
 
+const STAPLE_INGREDIENTS = new Set([
+  "salt",
+  "pepper",
+  "black pepper",
+  "water",
+  "olive oil",
+  "vegetable oil",
+  "canola oil",
+  "butter",
+]);
+
+function normalizeIngredientName(name: string): string {
+  return name.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+function recipeIngredientSet(recipe: Recipe): Set<string> {
+  return new Set(
+    (recipe.ingredients ?? [])
+      .map((i) => normalizeIngredientName(i.name || ""))
+      .filter((n) => n && !STAPLE_INGREDIENTS.has(n)),
+  );
+}
+
+function dominantProtein(recipe: Recipe): string {
+  const names = (recipe.ingredients ?? []).map((i) => normalizeIngredientName(i.name || ""));
+  const has = (terms: string[]) => names.some((n) => terms.some((t) => n.includes(t)));
+  if (has(["chicken"])) return "chicken";
+  if (has(["beef", "steak", "mince"])) return "beef";
+  if (has(["pork", "bacon", "ham"])) return "pork";
+  if (has(["salmon", "tuna", "fish", "prawn", "shrimp"])) return "seafood";
+  if (has(["tofu", "tempeh", "lentil", "bean", "chickpea"])) return "plant";
+  if (has(["egg"])) return "egg";
+  if (has(["turkey"])) return "turkey";
+  return "other";
+}
+
 export function generateMealPlan(
   selectedSlots: MealSlotKey[],
   existingSlotKeys: Set<string>,   // "day_slot" keys already in the plan
@@ -109,6 +145,12 @@ export function generateMealPlan(
   const usedPerSlot = new Map<MealSlotKey, Set<string>>(
     selectedSlots.map(s => [s, new Set<string>()]),
   );
+  const ingredientUsage = new Map<string, number>();
+  const proteinUsage = new Map<string, number>();
+  const cuisineUsage = new Map<string, number>();
+
+  const PROTEIN_HARD_CAP = 3;
+  const CUISINE_HARD_CAP = 3;
 
   for (const day of DAYS) {
     for (const slot of selectedSlots) {
@@ -122,10 +164,34 @@ export function generateMealPlan(
       const unused     = pool.filter(r => !used.has(r.id));
       const candidates = unused.length > 0 ? unused : pool;
 
-      const scored = candidates.map(r => {
+      const eligibleByHardCaps = candidates.filter((r) => {
+        const proteinKey = dominantProtein(r);
+        const cuisineKey = (r.cuisine || "unknown").toLowerCase();
+        return (proteinUsage.get(proteinKey) ?? 0) < PROTEIN_HARD_CAP &&
+          (cuisineUsage.get(cuisineKey) ?? 0) < CUISINE_HARD_CAP;
+      });
+      const scoringPool = eligibleByHardCaps.length > 0 ? eligibleByHardCaps : candidates;
+
+      const scored = scoringPool.map(r => {
         const calDiff  = Math.abs((r.calories ?? target.calories) - target.calories);
         const protDiff = Math.abs((r.protein  ?? target.protein)  - target.protein);
-        return { recipe: r, score: calDiff + protDiff * 4 };
+        const nutritionScore = calDiff + protDiff * 4;
+
+        // Encourage some overlap to reduce waste and simplify shopping.
+        const ingSet = recipeIngredientSet(r);
+        let overlapHits = 0;
+        ingSet.forEach((ing) => {
+          if (ingredientUsage.has(ing)) overlapHits += 1;
+        });
+        const overlapBoost = Math.min(overlapHits, 4) * 35;
+
+        const proteinKey = dominantProtein(r);
+        const proteinPenalty = (proteinUsage.get(proteinKey) ?? 0) * 55;
+
+        const cuisineKey = (r.cuisine || "unknown").toLowerCase();
+        const cuisinePenalty = (cuisineUsage.get(cuisineKey) ?? 0) * 30;
+
+        return { recipe: r, score: nutritionScore + proteinPenalty + cuisinePenalty - overlapBoost };
       });
       scored.sort((a, b) => a.score - b.score);
 
@@ -133,6 +199,14 @@ export function generateMealPlan(
       const picked = scored[Math.floor(Math.random() * topN)].recipe;
 
       used.add(picked.id);
+      recipeIngredientSet(picked).forEach((ing) => {
+        ingredientUsage.set(ing, (ingredientUsage.get(ing) ?? 0) + 1);
+      });
+      const proteinKey = dominantProtein(picked);
+      proteinUsage.set(proteinKey, (proteinUsage.get(proteinKey) ?? 0) + 1);
+      const cuisineKey = (picked.cuisine || "unknown").toLowerCase();
+      cuisineUsage.set(cuisineKey, (cuisineUsage.get(cuisineKey) ?? 0) + 1);
+
       results.push({ day, slot, recipe: picked, targetCalories: target.calories, targetProtein: target.protein });
     }
   }

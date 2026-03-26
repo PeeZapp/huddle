@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { 
   FamilyGroup, UserProfile, Recipe, MealPlan, ShoppingItem, 
-  CustomList, NutritionGoals, FoodLog, MealSlotData, MealSlotKey, Day 
+  CustomList, NutritionGoals, FoodLog, MealSlotData, MealSlotKey, Day, AppNotification, NotificationPrefs, FamilyCalendarEvent
 } from "@/lib/types";
 import { generateId, generateFamilyCode, getWeekStart } from "@/lib/utils";
 import { deduplicateIngredients } from "@/lib/amount-utils";
@@ -325,8 +325,10 @@ export const useShoppingStore = create<ShoppingState>()(
         // Re-attach metadata keyed by ingredient name
         const baseIdByName = new Map<string, string>();
         const sourcesByName = new Map<string, Array<{ recipe_id: string; recipe_name: string }>>();
+        const mealCountByName = new Map<string, number>();
         raw.forEach(r => {
           const key = r.name.toLowerCase().trim();
+          mealCountByName.set(key, (mealCountByName.get(key) ?? 0) + 1);
           if (r.base_recipe_id && !baseIdByName.has(key)) baseIdByName.set(key, r.base_recipe_id);
           const sources = sourcesByName.get(key) ?? [];
           if (!sources.some(s => s.recipe_id === r.recipe_id)) {
@@ -350,6 +352,7 @@ export const useShoppingStore = create<ShoppingState>()(
             family_code: plan.family_code,
             created_at: now,
             recipe_sources: sourcesByName.get(key) ?? [],
+            shared_meal_count: mealCountByName.get(key) ?? 0,
             ...(br ? { is_base_recipe: true, base_recipe_id: br.id, base_recipe_name: br.name } : {}),
           };
         });
@@ -473,29 +476,328 @@ export const usePriceStore = create<PriceState>()(
 // --- LISTS STORE ---
 interface ListsState {
   lists: CustomList[];
-  addList: (title: string, familyCode: string) => void;
+  addList: (
+    title: string,
+    familyCode: string,
+    options?: { emoji?: string; visible_to_member_ids?: string[]; created_by_id?: string }
+  ) => void;
   deleteList: (id: string) => void;
-  addItem: (listId: string, text: string) => void;
+  addItem: (
+    listId: string,
+    text: string,
+    options?: {
+      assignee_id?: string;
+      due_date?: string;
+      priority?: "low" | "medium" | "high";
+      notes?: string;
+      family_code?: string;
+      creator_name?: string;
+      list_title?: string;
+    }
+  ) => string;
+  updateItem: (
+    listId: string,
+    itemId: string,
+    updates: Partial<CustomList["items"][number]>
+  ) => void;
   toggleItem: (listId: string, itemId: string) => void;
   deleteItem: (listId: string, itemId: string) => void;
+  linkItemToCalendar: (listId: string, itemId: string, eventId: string, alertsEnabled: boolean) => void;
+  unlinkItemFromCalendar: (listId: string, itemId: string) => void;
 }
 
 export const useListsStore = create<ListsState>()(
   persist(
     (set, get) => ({
       lists: [],
-      addList: (title, fc) => set({ lists: [...get().lists, { id: generateId(), family_code: fc, title, items: [], created_at: new Date().toISOString() }] }),
+      addList: (title, fc, options) => set({
+        lists: [...get().lists, {
+          id: generateId(),
+          family_code: fc,
+          title,
+          emoji: options?.emoji || "📝",
+          visible_to_member_ids: options?.visible_to_member_ids,
+          created_by_id: options?.created_by_id,
+          items: [],
+          created_at: new Date().toISOString(),
+        }],
+      }),
       deleteList: (id) => set({ lists: get().lists.filter(l => l.id !== id) }),
-      addItem: (listId, text) => set({
-        lists: get().lists.map(l => l.id === listId ? { ...l, items: [...l.items, { id: generateId(), text, checked: false }] } : l)
+      addItem: (listId, text, options) => {
+        const newId = generateId();
+        set({
+          lists: get().lists.map(l => l.id === listId ? {
+            ...l,
+            items: [...l.items, {
+              id: newId,
+              text,
+              checked: false,
+              notes: options?.notes,
+              assignee_id: options?.assignee_id,
+              due_date: options?.due_date,
+              priority: options?.priority ?? "medium",
+              created_at: new Date().toISOString(),
+            }]
+          } : l)
+        });
+        return newId;
+      },
+      updateItem: (listId, itemId, updates) => set({
+        lists: get().lists.map((l) => l.id === listId ? {
+          ...l,
+          items: l.items.map((i) => i.id === itemId ? { ...i, ...updates } : i),
+        } : l),
       }),
       toggleItem: (listId, itemId) => set({
-        lists: get().lists.map(l => l.id === listId ? { ...l, items: l.items.map(i => i.id === itemId ? { ...i, checked: !i.checked } : i) } : l)
+        lists: get().lists.map(l => l.id === listId ? {
+          ...l,
+          items: l.items.map(i => {
+            if (i.id !== itemId) return i;
+            const nextChecked = !i.checked;
+            return {
+              ...i,
+              checked: nextChecked,
+              completed_at: nextChecked ? new Date().toISOString() : undefined,
+            };
+          }),
+        } : l)
       }),
       deleteItem: (listId, itemId) => set({
         lists: get().lists.map(l => l.id === listId ? { ...l, items: l.items.filter(i => i.id !== itemId) } : l)
-      })
+      }),
+      linkItemToCalendar: (listId, itemId, eventId, alertsEnabled) => set({
+        lists: get().lists.map((l) => l.id === listId ? {
+          ...l,
+          items: l.items.map((i) => i.id === itemId ? {
+            ...i,
+            calendar_event_id: eventId,
+            calendar_alerts_enabled: alertsEnabled,
+          } : i),
+        } : l),
+      }),
+      unlinkItemFromCalendar: (listId, itemId) => set({
+        lists: get().lists.map((l) => l.id === listId ? {
+          ...l,
+          items: l.items.map((i) => i.id === itemId ? {
+            ...i,
+            calendar_event_id: undefined,
+            calendar_alerts_enabled: undefined,
+          } : i),
+        } : l),
+      }),
     }),
     { name: "huddle-lists" }
+  )
+);
+
+// --- APP NOTIFICATIONS STORE ---
+interface NotificationsState {
+  notifications: AppNotification[];
+  prefsByRecipient: Record<string, NotificationPrefs>;
+  addNotification: (notification: Omit<AppNotification, "id" | "created_at" | "read">) => void;
+  markRead: (id: string) => void;
+  markReadForRecipient: (id: string, recipientId: string) => void;
+  markAllReadForRecipient: (recipientId: string) => void;
+  clearAllForRecipient: (recipientId: string) => void;
+  clearOneForRecipient: (id: string, recipientId: string) => void;
+  getPrefsForRecipient: (recipientId: string) => NotificationPrefs;
+  setPrefsForRecipient: (recipientId: string, prefs: Partial<NotificationPrefs>) => void;
+  shouldNotify: (recipientId: string, type: AppNotification["type"]) => boolean;
+}
+
+const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  list_assigned: true,
+  list_due_soon: true,
+  list_overdue: true,
+  push_enabled: false,
+};
+
+export const useNotificationsStore = create<NotificationsState>()(
+  persist(
+    (set, get) => ({
+      notifications: [],
+      prefsByRecipient: {},
+      addNotification: (notification) => set({
+        notifications: [
+          {
+            id: generateId(),
+            read: false,
+            created_at: new Date().toISOString(),
+            ...notification,
+          },
+          ...get().notifications,
+        ],
+      }),
+      markRead: (id) => set({
+        notifications: get().notifications.map((n) => n.id === id ? { ...n, read: true } : n),
+      }),
+      markReadForRecipient: (id, recipientId) => set({
+        notifications: get().notifications.map((n) =>
+          n.id === id && n.recipient_id === recipientId ? { ...n, read: true } : n
+        ),
+      }),
+      markAllReadForRecipient: (recipientId) => set({
+        notifications: get().notifications.map((n) =>
+          n.recipient_id === recipientId ? { ...n, read: true } : n
+        ),
+      }),
+      clearAllForRecipient: (recipientId) => set({
+        notifications: get().notifications.filter((n) => n.recipient_id !== recipientId),
+      }),
+      clearOneForRecipient: (id, recipientId) => set({
+        notifications: get().notifications.filter((n) => !(n.id === id && n.recipient_id === recipientId)),
+      }),
+      getPrefsForRecipient: (recipientId) => {
+        return get().prefsByRecipient[recipientId] ?? DEFAULT_NOTIFICATION_PREFS;
+      },
+      setPrefsForRecipient: (recipientId, prefs) => set({
+        prefsByRecipient: {
+          ...get().prefsByRecipient,
+          [recipientId]: {
+            ...DEFAULT_NOTIFICATION_PREFS,
+            ...(get().prefsByRecipient[recipientId] ?? {}),
+            ...prefs,
+          },
+        },
+      }),
+      shouldNotify: (recipientId, type) => {
+        if (type === "general") return true;
+        const prefs = get().prefsByRecipient[recipientId] ?? DEFAULT_NOTIFICATION_PREFS;
+        if (type === "list_assigned") return prefs.list_assigned;
+        if (type === "list_due_soon") return prefs.list_due_soon;
+        if (type === "list_overdue") return prefs.list_overdue;
+        return true;
+      },
+    }),
+    { name: "huddle-notifications" }
+  )
+);
+
+// --- FAMILY CALENDAR STORE ---
+interface CalendarState {
+  events: FamilyCalendarEvent[];
+  importedHolidayKeys: string[]; // `${country}:${year}`
+  addEvent: (event: Omit<FamilyCalendarEvent, "id" | "created_at" | "updated_at">) => FamilyCalendarEvent;
+  updateEvent: (id: string, updates: Partial<FamilyCalendarEvent>) => void;
+  deleteEvent: (id: string) => void;
+  importPublicAndSchoolHolidays: (familyCode: string, countryCode: string, year: number) => Promise<void>;
+  upsertBirthdayEvents: (familyCode: string, members: Array<{ id: string; name: string; birthday?: string }>) => void;
+}
+
+const SCHOOL_HOLIDAY_SEEDS: Record<string, Array<{ title: string; start: string; end: string }>> = {
+  AU: [
+    { title: "School Holidays (Term Break 1)", start: "2026-04-10", end: "2026-04-26" },
+    { title: "School Holidays (Winter)", start: "2026-06-26", end: "2026-07-12" },
+    { title: "School Holidays (Spring)", start: "2026-09-18", end: "2026-10-04" },
+    { title: "School Holidays (Summer)", start: "2026-12-18", end: "2027-01-31" },
+  ],
+  NZ: [
+    { title: "School Holidays (Autumn)", start: "2026-04-03", end: "2026-04-19" },
+    { title: "School Holidays (Winter)", start: "2026-07-04", end: "2026-07-19" },
+    { title: "School Holidays (Spring)", start: "2026-09-26", end: "2026-10-11" },
+    { title: "School Holidays (Summer)", start: "2026-12-19", end: "2027-01-31" },
+  ],
+};
+
+export const useCalendarStore = create<CalendarState>()(
+  persist(
+    (set, get) => ({
+      events: [],
+      importedHolidayKeys: [],
+      addEvent: (event) => {
+        const next: FamilyCalendarEvent = {
+          id: generateId(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          ...event,
+        };
+        set({ events: [...get().events, next] });
+        return next;
+      },
+      updateEvent: (id, updates) => set({
+        events: get().events.map((e) => e.id === id ? { ...e, ...updates, updated_at: new Date().toISOString() } : e),
+      }),
+      deleteEvent: (id) => set({
+        events: get().events.filter((e) => e.id !== id),
+      }),
+      importPublicAndSchoolHolidays: async (familyCode, countryCode, year) => {
+        const key = `${countryCode}:${year}`;
+        if (get().importedHolidayKeys.includes(key)) return;
+
+        const publicEvents: FamilyCalendarEvent[] = [];
+        try {
+          const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${countryCode}`);
+          if (res.ok) {
+            const holidays = await res.json() as Array<{ date: string; localName: string; name: string }>;
+            holidays.forEach((h) => {
+              publicEvents.push({
+                id: generateId(),
+                family_code: familyCode,
+                title: h.localName || h.name,
+                start_date: h.date,
+                all_day: true,
+                recurrence: "none",
+                alerts_enabled: false,
+                source: "public_holiday",
+                external_id: `public:${countryCode}:${h.date}:${h.name}`,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
+            });
+          }
+        } catch {
+          // keep calm on network failures
+        }
+
+        const schoolSeeds = SCHOOL_HOLIDAY_SEEDS[countryCode] ?? [];
+        const schoolEvents: FamilyCalendarEvent[] = schoolSeeds
+          .filter((s) => s.start.startsWith(String(year)))
+          .map((s) => ({
+            id: generateId(),
+            family_code: familyCode,
+            title: s.title,
+            start_date: s.start,
+            end_date: s.end,
+            all_day: true,
+            recurrence: "none",
+            alerts_enabled: false,
+            source: "school_holiday",
+            external_id: `school:${countryCode}:${s.start}:${s.title}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }));
+
+        const existing = get().events;
+        const existingExternal = new Set(existing.map((e) => e.external_id).filter(Boolean));
+        const merged = [...publicEvents, ...schoolEvents].filter((e) => !existingExternal.has(e.external_id));
+        set({
+          events: [...existing, ...merged],
+          importedHolidayKeys: [...get().importedHolidayKeys, key],
+        });
+      },
+      upsertBirthdayEvents: (familyCode, members) => {
+        const existing = get().events.filter((e) => e.family_code === familyCode);
+        const nonBirthdays = existing.filter((e) => e.source !== "birthday");
+        const birthdays: FamilyCalendarEvent[] = members
+          .filter((m) => !!m.birthday)
+          .map((m) => ({
+            id: generateId(),
+            family_code: familyCode,
+            title: `${m.name}'s Birthday`,
+            start_date: m.birthday!,
+            all_day: true,
+            recurrence: "yearly",
+            alerts_enabled: true,
+            source: "birthday",
+            external_id: `birthday:${m.id}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }));
+        set({
+          events: [...nonBirthdays, ...birthdays],
+        });
+      },
+    }),
+    { name: "huddle-calendar" }
   )
 );

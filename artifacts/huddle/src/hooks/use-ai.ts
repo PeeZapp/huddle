@@ -9,6 +9,19 @@ interface AiResponse {
   result: string;
 }
 
+export interface MealPhotoAnalyzeResponse {
+  result: {
+    meal_name: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    confidence?: number;
+    notes?: string;
+  };
+  creditsRequired?: boolean;
+}
+
 export function useAiMutation() {
   return useMutation({
     mutationFn: async (data: AiRequest): Promise<AiResponse> => {
@@ -76,4 +89,40 @@ export function useAiMutation() {
       }
     },
   });
+}
+
+export async function lookupBarcode(barcode: string) {
+  const res = await fetch(`/api/barcode/${encodeURIComponent(barcode)}`);
+  if (!res.ok) {
+    throw new Error("Barcode lookup failed");
+  }
+  return await res.json() as {
+    barcode: string;
+    name: string;
+    brand?: string;
+    serving_size?: string;
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+  };
+}
+
+export async function analyzeMealPhoto(imageDataUrl: string, mealHint?: string, creditsAvailable = 999999) {
+  const res = await fetch("/api/ai/meal-photo/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imageDataUrl, mealHint, creditsAvailable }),
+  });
+  if (!res.ok) {
+    let message = "Meal photo analysis failed";
+    try {
+      const data = await res.json() as { error?: string };
+      if (data?.error) message = data.error;
+    } catch {
+      // ignore parse failures and keep default message
+    }
+    throw new Error(message);
+  }
+  return await res.json() as MealPhotoAnalyzeResponse;
 }

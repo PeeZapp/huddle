@@ -12,12 +12,15 @@ import Recipes from "@/pages/Recipes";
 import RecipeDetail from "@/pages/RecipeDetail";
 import ImportRecipe from "@/pages/ImportRecipe";
 import Nutrition from "@/pages/Nutrition";
+import Calendar from "@/pages/Calendar";
 import Lists from "@/pages/Lists";
+import Alerts from "@/pages/Alerts";
 import Family from "@/pages/Family";
 import PriceSettings from "@/pages/PriceSettings";
 import { useFamilyStore, useRecipeStore, usePriceStore } from "@/stores/huddle-stores";
 import { useMealPlanSync } from "@/hooks/useMealPlanSync";
 import { saveUserProfile } from "@/lib/firestore-sync";
+import { Toaster } from "@/components/ui/toaster";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,7 +48,9 @@ function Router() {
       <Route path="/recipe/:id" component={RecipeDetail} />
       <Route path="/import" component={ImportRecipe} />
       <Route path="/nutrition" component={Nutrition} />
+      <Route path="/calendar" component={Calendar} />
       <Route path="/lists" component={Lists} />
+      <Route path="/alerts" component={Alerts} />
       <Route path="/family" component={Family} />
       <Route path="/prices" component={PriceSettings} />
       <Route component={NotFound} />
@@ -158,6 +163,7 @@ function App() {
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <AuthGate />
         </WouterRouter>
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -23,6 +23,14 @@ Typecheck:
 pnpm --filter @workspace/huddle run typecheck
 ```
 
+## Environment Variables
+
+Use the env templates and setup notes at:
+
+- `artifacts/huddle/.env.example`
+- `artifacts/api-server/.env.example`
+- `ENVIRONMENT_SETUP.md`
+
 ## PWA foundation
 
 The app uses `vite-plugin-pwa` with:

@@ -1,12 +1,13 @@
 import { Link, useLocation } from "wouter";
-import { Calendar, ShoppingCart, BookOpen, ListTodo, PieChart, Settings } from "lucide-react";
+import { House, CalendarDays, ShoppingCart, BookOpen, ListTodo, PieChart, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function BottomNav() {
   const [location] = useLocation();
 
   const navItems = [
-    { path: "/", icon: Calendar, label: "Plan" },
+    { path: "/", icon: House, label: "Plan" },
+    { path: "/calendar", icon: CalendarDays, label: "Calendar" },
     { path: "/shopping", icon: ShoppingCart, label: "Shop" },
     { path: "/recipes", icon: BookOpen, label: "Recipes" },
     { path: "/lists", icon: ListTodo, label: "Lists" },
