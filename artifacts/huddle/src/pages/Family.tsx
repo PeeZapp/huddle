@@ -12,6 +12,7 @@ import { generateId } from "@/lib/utils";
 
 const MEMBER_TYPES: { value: FamilyMember["type"]; label: string; emoji: string }[] = [
   { value: "adult",   label: "Adult",   emoji: "👤" },
+  { value: "teen",    label: "Teen",    emoji: "🧑" },
   { value: "child",   label: "Child",   emoji: "🧒" },
   { value: "toddler", label: "Toddler", emoji: "👶" },
   { value: "baby",    label: "Baby",    emoji: "🍼" },

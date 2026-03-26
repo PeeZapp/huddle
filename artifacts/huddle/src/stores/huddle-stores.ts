@@ -196,10 +196,27 @@ interface MealPlanState {
   plans: Record<string, MealPlan>;
   getPlan: (weekStart: string, familyCode: string) => MealPlan;
   setSlot: (weekStart: string, familyCode: string, day: Day, slot: MealSlotKey, data: MealSlotData | null) => void;
+  setSlotHidden: (weekStart: string, familyCode: string, day: Day, slot: MealSlotKey, hidden: boolean) => void;
   setActiveSlots: (weekStart: string, familyCode: string, slots: MealSlotKey[]) => void;
   clearWeek: (weekStart: string) => void;
   /** Internal — called by useMealPlanSync to apply remote Firestore data */
   _setPlansFromRemote: (plans: Record<string, MealPlan>) => void;
+}
+
+function getSlotFromPlanKey(key: string): MealSlotKey | null {
+  const firstUnderscore = key.indexOf("_");
+  if (firstUnderscore < 0) return null;
+  const slotRaw = key.slice(firstUnderscore + 1);
+  const valid: MealSlotKey[] = [
+    "breakfast",
+    "morning_snack",
+    "lunch",
+    "afternoon_snack",
+    "dinner",
+    "night_snack",
+    "dessert",
+  ];
+  return valid.includes(slotRaw as MealSlotKey) ? (slotRaw as MealSlotKey) : null;
 }
 
 export const useMealPlanStore = create<MealPlanState>()(
@@ -220,7 +237,7 @@ export const useMealPlanStore = create<MealPlanState>()(
         }
         const newPlan: MealPlan = {
           id: generateId(), week_start: weekStart, family_code: familyCode,
-          active_slots: ["breakfast", "lunch", "dinner"], slots: {},
+          active_slots: ["breakfast", "lunch", "dinner"], slots: {}, hidden_slots: {},
           created_at: new Date().toISOString(), updated_at: new Date().toISOString()
         };
         return newPlan;
@@ -234,6 +251,26 @@ export const useMealPlanStore = create<MealPlanState>()(
         
         set((state) => ({
           plans: { ...state.plans, [weekStart]: { ...plan, slots: newSlots, updated_at: new Date().toISOString() } }
+        }));
+      },
+      setSlotHidden: (weekStart, familyCode, day, slot, hidden) => {
+        const plan = get().getPlan(weekStart, familyCode);
+        const key = `${day}_${slot}`;
+        const hiddenSlots = { ...(plan.hidden_slots ?? {}) };
+        if (hidden) {
+          hiddenSlots[key] = true;
+        } else {
+          delete hiddenSlots[key];
+        }
+        set((state) => ({
+          plans: {
+            ...state.plans,
+            [weekStart]: {
+              ...plan,
+              hidden_slots: hiddenSlots,
+              updated_at: new Date().toISOString(),
+            },
+          },
         }));
       },
       setActiveSlots: (weekStart, familyCode, slots) => {
@@ -285,10 +322,15 @@ export const useShoppingStore = create<ShoppingState>()(
         // Build a map of base-recipe id → Recipe for quick lookup
         const baseRecipeMap = new Map(recipes.filter(r => r.is_component).map(r => [r.id, r]));
 
-        // Collect every ingredient from every ACTIVE slot, tracking the source recipe.
-        // Slots that aren't in active_slots may exist from a previous generation but
-        // should not appear in the shopping list (they're hidden on the Plan page too).
+        // Collect every ingredient from:
+        // 1) active weekly slots, and
+        // 2) any extra day-only slots the user manually added.
         const activeSlotSet = new Set(plan.active_slots ?? ["breakfast", "lunch", "dinner"]);
+        const hiddenSlotSet = new Set(
+          Object.entries(plan.hidden_slots ?? {})
+            .filter(([, hidden]) => hidden)
+            .map(([key]) => key),
+        );
 
         const raw: {
           name: string; amount?: string; category?: string;
@@ -297,9 +339,12 @@ export const useShoppingStore = create<ShoppingState>()(
         }[] = [];
 
         Object.entries(plan.slots).forEach(([key, slot]) => {
-          // key format: "monday_breakfast" → extract meal type
-          const mealType = key.split("_").pop() ?? "";
-          if (!activeSlotSet.has(mealType)) return;
+          if (hiddenSlotSet.has(key)) return;
+          const mealType = getSlotFromPlanKey(key);
+          if (!mealType) return;
+          // Include slot if it's an active weekly slot OR if it has data at all
+          // (manual day-only slot).
+          if (!activeSlotSet.has(mealType) && !slot.recipe_id && !slot.recipe_name) return;
           if (slot.recipe_id) {
             const recipe = recipes.find(r => r.id === slot.recipe_id);
             if (recipe?.ingredients) {

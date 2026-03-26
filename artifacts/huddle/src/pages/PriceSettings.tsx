@@ -227,6 +227,7 @@ export default function PriceSettings() {
                     ? `Last updated ${formatDate(lastAiRefresh)}`
                     : "Never refreshed"}
                 </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Uses AI credits</p>
               </div>
             </div>
 

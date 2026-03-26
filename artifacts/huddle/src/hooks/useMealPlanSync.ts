@@ -36,6 +36,9 @@ export function useMealPlanSync(familyCode: string | undefined) {
   // The save effect reads and clears it synchronously so it never writes
   // back data that originated from Firestore.
   const skipNextSave = useRef(false);
+  const dirtyWeeks   = useRef<Set<string>>(new Set());
+  const prevPlansRef = useRef<Record<string, MealPlan>>(plans);
+  const saveInFlight = useRef(false);
 
   const saveTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialized  = useRef(false);
@@ -47,6 +50,9 @@ export function useMealPlanSync(familyCode: string | undefined) {
   ): Record<string, MealPlan> {
     const merged = { ...local };
     for (const [week, remotePlan] of Object.entries(remote)) {
+      // If this week has unsaved local edits, never replace it with remote data.
+      if (dirtyWeeks.current.has(week)) continue;
+      if (saveInFlight.current) continue;
       const localPlan  = local[week];
       const remoteTime = new Date(remotePlan.updated_at ?? 0).getTime();
       const localTime  = new Date(localPlan?.updated_at  ?? 0).getTime();
@@ -86,13 +92,38 @@ export function useMealPlanSync(familyCode: string | undefined) {
 
     // This change came from a remote sync — don't echo it back to Firestore.
     if (skipNextSave.current) {
+      prevPlansRef.current = plans;
       skipNextSave.current = false;
       return;
     }
 
+    // Mark changed weeks as dirty so incoming snapshots can't overwrite them.
+    const prev = prevPlansRef.current;
+    const changedWeeks = new Set<string>([
+      ...Object.keys(prev),
+      ...Object.keys(plans),
+    ]);
+    for (const week of changedWeeks) {
+      const before = prev[week];
+      const after  = plans[week];
+      if (JSON.stringify(before) !== JSON.stringify(after)) {
+        dirtyWeeks.current.add(week);
+      }
+    }
+    prevPlansRef.current = plans;
+
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveMealPlans(familyCode, useMealPlanStore.getState().plans);
+      void (async () => {
+        saveInFlight.current = true;
+        try {
+          await saveMealPlans(familyCode, useMealPlanStore.getState().plans);
+          // Once saved remotely, allow snapshots to refresh these weeks again.
+          dirtyWeeks.current.clear();
+        } finally {
+          saveInFlight.current = false;
+        }
+      })();
     }, DEBOUNCE_MS);
 
     return () => {

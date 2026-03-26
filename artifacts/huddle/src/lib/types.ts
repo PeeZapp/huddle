@@ -66,6 +66,8 @@ export interface MealSlotData {
   carbs?: number;
   fat?: number;
   cook_time?: number;
+  eaten_by?: Record<string, boolean>;
+  nutrition_entry_by_user?: Record<string, string>;
 }
 
 export interface MealPlan {
@@ -74,6 +76,7 @@ export interface MealPlan {
   family_code: string;
   active_slots: MealSlotKey[];
   slots: Record<string, MealSlotData>; // format: "day_slotkey"
+  hidden_slots?: Record<string, boolean>; // format: "day_slotkey" => true
   created_at: string;
   updated_at: string;
 }
@@ -97,7 +100,7 @@ export interface ShoppingItem {
 export interface FamilyMember {
   id: string;
   name: string;
-  type: "adult" | "child" | "toddler" | "baby";
+  type: "adult" | "teen" | "child" | "toddler" | "baby";
   dietary?: string[]; // restriction ids from DIETARY_OPTIONS
 }
 
@@ -116,6 +119,56 @@ export interface NutritionGoals {
   protein: number;
   carbs: number;
   fat: number;
+}
+
+export type NutritionGoalPreset =
+  | "maintenance"
+  | "muscle_gain"
+  | "weight_loss"
+  | "keto"
+  | "high_protein_cut"
+  | "low_carb"
+  | "endurance"
+  | "recomp"
+  | "lean_bulk"
+  | "custom";
+
+export interface UserNutritionProfile {
+  uid: string;
+  goals: NutritionGoals;
+  preset: NutritionGoalPreset;
+  serving_factor: number;
+  linked_family_member_id?: string;
+  updated_at: string;
+}
+
+export interface NutritionLogEntry {
+  id: string;
+  source: "plan_meal" | "manual";
+  meal_name: string;
+  recipe_id?: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  portion_factor?: number;
+  ingredients?: Array<{ name: string; amount?: string; unit?: string }>;
+  note?: string;
+  created_at: string;
+}
+
+export interface DailyNutritionLog {
+  date: string; // yyyy-mm-dd
+  totals: NutritionGoals;
+  entries: NutritionLogEntry[];
+  updated_at: string;
+}
+
+export interface BodyWeightEntry {
+  id: string;
+  date: string; // yyyy-mm-dd
+  kg: number;
+  created_at: string;
 }
 
 export interface FoodLog {

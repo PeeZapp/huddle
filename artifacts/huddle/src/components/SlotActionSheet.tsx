@@ -4,6 +4,7 @@ import { Button } from "@/components/ui";
 import { useAiMutation } from "@/hooks/use-ai";
 import { MealSlotKey, MEAL_SLOTS, Recipe, MealSlotData } from "@/lib/types";
 import { recipesForSlot } from "@/lib/generate-plan";
+import { estimateFromLocalIngredients } from "@/lib/local-nutrition";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,12 @@ interface Props {
 }
 
 type Mode = "actions" | "library" | "manual";
+interface ManualIngredientRow {
+  id: string;
+  name: string;
+  amount: string;
+  unit: "g" | "kg" | "oz" | "lb" | "cup" | "tbsp" | "tsp" | "piece";
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -56,7 +63,11 @@ export default function SlotActionSheet({
   // Manual entry
   const [manualText, setManualText]         = useState("");
   const [estimatedNutrition, setEstimated]  = useState<Partial<MealSlotData> | null>(null);
+  const [estimateSource, setEstimateSource] = useState<"ai" | "local" | null>(null);
   const [estimateError, setEstimateError]   = useState("");
+  const [manualIngredients, setManualIngredients] = useState<ManualIngredientRow[]>([
+    { id: crypto.randomUUID(), name: "", amount: "100", unit: "g" },
+  ]);
 
   // Track whether the sheet was already open so we only reset state on the
   // closed→open transition, NOT every time `existing` gets a new reference
@@ -80,7 +91,9 @@ export default function SlotActionSheet({
       setMode(existing ? "actions" : "library");
       setQuery("");
       setManualText("");
+      setManualIngredients([{ id: crypto.randomUUID(), name: "", amount: "100", unit: "g" }]);
       setEstimated(null);
+      setEstimateSource(null);
       setEstimateError("");
     }
 
@@ -113,6 +126,7 @@ export default function SlotActionSheet({
   async function handleEstimate() {
     if (!manualText.trim()) return;
     setEstimated(null);
+    setEstimateSource(null);
     setEstimateError("");
 
     try {
@@ -124,19 +138,57 @@ No markdown, no explanation — raw JSON only.`,
         responseFormat: "json",
       });
 
-      const raw = res.result.trim();
-      const match = raw.match(/\{[\s\S]*\}/);
-      const parsed = JSON.parse(match ? match[0] : raw);
+      const parsed = (() => {
+        if (typeof res.result === "string") {
+          const raw = res.result.trim();
+          const match = raw.match(/\{[\s\S]*\}/);
+          return JSON.parse(match ? match[0] : raw) as Record<string, unknown>;
+        }
+        if (typeof res.result === "object" && res.result !== null) {
+          return res.result as Record<string, unknown>;
+        }
+        throw new Error("Unexpected AI response shape");
+      })();
       setEstimated({
-        calories: Math.round(parsed.calories ?? 0),
-        protein:  Math.round(parsed.protein  ?? 0),
-        carbs:    Math.round(parsed.carbs    ?? 0),
-        fat:      Math.round(parsed.fat      ?? 0),
-        emoji:    parsed.emoji ?? "🍽️",
+        calories: Math.round(Number(parsed.calories ?? 0)),
+        protein:  Math.round(Number(parsed.protein ?? 0)),
+        carbs:    Math.round(Number(parsed.carbs ?? 0)),
+        fat:      Math.round(Number(parsed.fat ?? 0)),
+        emoji:    typeof parsed.emoji === "string" ? parsed.emoji : "🍽️",
       });
+      setEstimateSource("ai");
     } catch {
       setEstimateError("Could not estimate — please try again.");
     }
+  }
+
+  function handleLocalEstimate() {
+    const UNIT_TO_GRAMS: Record<ManualIngredientRow["unit"], number> = {
+      g: 1,
+      kg: 1000,
+      oz: 28.35,
+      lb: 453.59,
+      cup: 240,   // rough generic default
+      tbsp: 15,   // rough generic default
+      tsp: 5,     // rough generic default
+      piece: 100, // rough generic default
+    };
+
+    const totals = estimateFromLocalIngredients(
+      manualIngredients.map((i) => ({
+        name: i.name,
+        grams: Number(i.amount) * UNIT_TO_GRAMS[i.unit],
+      })),
+    );
+
+    if (totals.calories <= 0 && totals.protein <= 0 && totals.carbs <= 0 && totals.fat <= 0) {
+      setEstimateError("Could not estimate from ingredients. Add known ingredient names and grams.");
+      return;
+    }
+
+    setEstimateError("");
+    setEstimated(totals);
+    setEstimateSource("local");
   }
 
   function handleSaveManual() {
@@ -341,26 +393,116 @@ No markdown, no explanation — raw JSON only.`,
               />
             </div>
 
+            <div className="bg-secondary/30 border border-border rounded-2xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Ingredient estimator (no AI)
+                </p>
+                <button
+                  className="text-xs text-primary font-semibold hover:underline"
+                  onClick={() =>
+                    setManualIngredients((prev) => [
+                      ...prev,
+                      { id: crypto.randomUUID(), name: "", amount: "100", unit: "g" },
+                    ])
+                  }
+                >
+                  + Add ingredient
+                </button>
+              </div>
+              {manualIngredients.map((row) => (
+                <div key={row.id} className="grid grid-cols-[minmax(0,1fr)_64px_66px_28px] gap-1.5 items-center">
+                  <input
+                    className="min-w-0 border border-border rounded-lg px-2.5 py-2 text-sm bg-white"
+                    placeholder="Ingredient (e.g. chicken, rice)"
+                    value={row.name}
+                    onChange={(e) =>
+                      setManualIngredients((prev) =>
+                        prev.map((r) => (r.id === row.id ? { ...r, name: e.target.value } : r)),
+                      )
+                    }
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full border border-border rounded-lg px-1.5 py-2 text-sm bg-white"
+                    placeholder="Amount"
+                    value={row.amount}
+                    onChange={(e) =>
+                      setManualIngredients((prev) =>
+                        prev.map((r) => (r.id === row.id ? { ...r, amount: e.target.value } : r)),
+                      )
+                    }
+                  />
+                  <select
+                    className="w-full border border-border rounded-lg px-1 py-2 text-xs bg-white"
+                    value={row.unit}
+                    onChange={(e) =>
+                      setManualIngredients((prev) =>
+                        prev.map((r) =>
+                          r.id === row.id ? { ...r, unit: e.target.value as ManualIngredientRow["unit"] } : r,
+                        ),
+                      )
+                    }
+                  >
+                    <option value="g">g</option>
+                    <option value="kg">kg</option>
+                    <option value="oz">oz</option>
+                    <option value="lb">lb</option>
+                    <option value="cup">cup</option>
+                    <option value="tbsp">tbsp</option>
+                    <option value="tsp">tsp</option>
+                    <option value="piece">piece</option>
+                  </select>
+                  <button
+                    className="w-7 h-7 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30"
+                    onClick={() =>
+                      setManualIngredients((prev) =>
+                        prev.length > 1 ? prev.filter((r) => r.id !== row.id) : prev,
+                      )
+                    }
+                    aria-label="Remove ingredient"
+                    title="Remove ingredient"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+              <Button variant="outline" className="w-full" onClick={handleLocalEstimate}>
+                Estimate from ingredients (no AI)
+              </Button>
+              <p className="text-[10px] text-muted-foreground">
+                Unit conversions are approximate (especially cup/tbsp/tsp/piece) and intended as quick estimates.
+              </p>
+            </div>
+
             {/* Estimate nutrition */}
             {!estimatedNutrition ? (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleEstimate}
-                disabled={!manualText.trim() || aiMutation.isPending}
-              >
-                {aiMutation.isPending
-                  ? <><Loader2 size={15} className="mr-2 animate-spin" /> Analysing…</>
-                  : <><Sparkles size={15} className="mr-2 text-primary" /> Estimate Nutrition with AI</>
-                }
-              </Button>
+              <div className="space-y-1.5">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleEstimate}
+                  disabled={!manualText.trim() || aiMutation.isPending}
+                >
+                  {aiMutation.isPending
+                    ? <><Loader2 size={15} className="mr-2 animate-spin" /> Analysing…</>
+                    : <><Sparkles size={15} className="mr-2 text-primary" /> Estimate Nutrition with AI</>
+                  }
+                </Button>
+                <p className="text-[11px] text-muted-foreground text-center">Uses AI credits</p>
+              </div>
             ) : (
               <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 space-y-3">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-2xl">{estimatedNutrition.emoji}</span>
                   <div>
-                    <p className="text-xs font-bold text-primary uppercase tracking-wider">AI Estimate</p>
-                    <p className="text-[11px] text-muted-foreground">Tap below to re-analyse</p>
+                    <p className="text-xs font-bold text-primary uppercase tracking-wider">
+                      {estimateSource === "local" ? "Local Estimate" : "AI Estimate"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {estimateSource === "local" ? "Estimated from ingredients" : "Tap below to re-analyse"}
+                    </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-4 gap-2">

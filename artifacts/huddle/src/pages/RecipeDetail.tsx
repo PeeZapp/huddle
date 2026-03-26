@@ -9,6 +9,7 @@ import {
 import { Button, Badge } from "@/components/ui";
 import { useRecipeStore, useFamilyStore, usePriceStore } from "@/stores/huddle-stores";
 import { estimateRecipeCost, getCurrencyConfig, formatCost } from "@/lib/recipe-costing";
+import { getIngredientSubstitutes } from "@/lib/ingredient-substitutions";
 
 export default function RecipeDetail() {
   const { id }                        = useParams();
@@ -23,6 +24,7 @@ export default function RecipeDetail() {
 
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft]     = useState("");
+  const [expandedIngredientSubs, setExpandedIngredientSubs] = useState<Record<string, boolean>>({});
 
   // ── Cook mode (Screen Wake Lock) ──────────────────────────────────────────
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
@@ -369,22 +371,51 @@ export default function RecipeDetail() {
             <ul className="space-y-3 bg-white p-5 rounded-2xl border border-border">
               {recipe.ingredients?.map((ing, i) => {
                 const baseRecipe = ing.base_recipe_id ? baseRecipeMap.get(ing.base_recipe_id) : undefined;
+                const substitutes = getIngredientSubstitutes(ing.name);
+                const subKey = `${i}_${ing.name}`;
+                const isSubExpanded = Boolean(expandedIngredientSubs[subKey]);
                 return (
-                  <li key={i} className="flex justify-between items-center text-sm border-b border-border/50 pb-3 last:border-0 last:pb-0">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-medium truncate">{ing.name}</span>
-                      {baseRecipe && (
-                        <button
-                          onClick={() => setLocation(`/recipe/${baseRecipe.id}`)}
-                          title={`View base recipe: ${baseRecipe.name}`}
-                          className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0 hover:bg-primary/20 transition-colors"
-                        >
-                          <Layers size={9} />
-                          base
-                        </button>
-                      )}
+                  <li key={i} className="text-sm border-b border-border/50 pb-3 last:border-0 last:pb-0">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-medium truncate">{ing.name}</span>
+                        {baseRecipe && (
+                          <button
+                            onClick={() => setLocation(`/recipe/${baseRecipe.id}`)}
+                            title={`View base recipe: ${baseRecipe.name}`}
+                            className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0 hover:bg-primary/20 transition-colors"
+                          >
+                            <Layers size={9} />
+                            base
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-muted-foreground ml-2 shrink-0">{ing.amount}</span>
                     </div>
-                    <span className="text-muted-foreground ml-2 shrink-0">{ing.amount}</span>
+
+                    {substitutes.length > 0 && (
+                      <div className="mt-1.5">
+                        <button
+                          onClick={() =>
+                            setExpandedIngredientSubs((prev) => ({ ...prev, [subKey]: !isSubExpanded }))
+                          }
+                          className="text-[11px] font-semibold text-primary hover:underline"
+                        >
+                          {isSubExpanded ? "Hide substitutes" : "View substitutes"}
+                        </button>
+                        {isSubExpanded && (
+                          <div className="mt-1.5 bg-primary/5 border border-primary/15 rounded-lg p-2.5 space-y-1.5">
+                            {substitutes.map((s) => (
+                              <div key={s.name} className="text-xs">
+                                <span className="font-semibold">{s.name}</span>
+                                {s.ratio ? <span className="text-muted-foreground"> · {s.ratio}</span> : null}
+                                {s.notes ? <span className="text-muted-foreground"> — {s.notes}</span> : null}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}
