@@ -19,6 +19,7 @@ import Family from "@/pages/Family";
 import PriceSettings from "@/pages/PriceSettings";
 import { useFamilyStore, useRecipeStore, usePriceStore } from "@/stores/huddle-stores";
 import { useMealPlanSync } from "@/hooks/useMealPlanSync";
+import { useShoppingSync } from "@/hooks/useShoppingSync";
 import { saveUserProfile } from "@/lib/firestore-sync";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -60,6 +61,23 @@ function Router() {
 
 const PROFILE_SAVE_DEBOUNCE = 2000;
 
+function AdSenseBootstrap() {
+  useEffect(() => {
+    const adsEnabled = import.meta.env.VITE_ADS_ENABLED !== "false";
+    const adClient = import.meta.env.VITE_ADSENSE_CLIENT as string | undefined;
+    if (!adsEnabled || !adClient) return;
+    if (typeof document === "undefined") return;
+    if (document.querySelector('script[data-huddle-adsense="true"]')) return;
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(adClient)}`;
+    script.crossOrigin = "anonymous";
+    script.setAttribute("data-huddle-adsense", "true");
+    document.head.appendChild(script);
+  }, []);
+  return null;
+}
+
 function SeedLoader() {
   const { profile, familyGroup } = useFamilyStore();
   const { loadSeeds }            = useRecipeStore();
@@ -77,6 +95,7 @@ function SeedLoader() {
 
   // Sync meal plans to/from Firestore, scoped to this family group's code
   useMealPlanSync(profile?.family_code);
+  useShoppingSync(profile?.family_code);
 
   // Keep a ref so the save effect can read `profileLoading` without it being
   // a reactive dependency.  This prevents the echo-write that would otherwise
@@ -160,6 +179,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <AdSenseBootstrap />
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <AuthGate />
         </WouterRouter>

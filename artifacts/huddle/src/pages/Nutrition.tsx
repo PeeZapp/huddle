@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Check, Target, Trash2, Pencil, Save, Sparkles, Loader2, Scale } from "lucide-react";
 import { Button, Card } from "@/components/ui";
+import AdSlot from "@/components/ads/AdSlot";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNutritionStore } from "@/stores/huddle-stores";
 import { BarcodeNutritionProduct, DailyNutritionLog, MealPhotoAnalysisResult, NutritionGoalPreset, NutritionGoals, NutritionLogEntry, UserNutritionProfile } from "@/lib/types";
@@ -21,7 +22,7 @@ import {
 import { generateId } from "@/lib/utils";
 import { estimateFromLocalIngredients } from "@/lib/local-nutrition";
 import { analyzeMealPhoto, lookupBarcode, useAiMutation } from "@/hooks/use-ai";
-import { useFamilyStore, useRecipeStore } from "@/stores/huddle-stores";
+import { useFamilyStore, usePriceStore, useRecipeStore } from "@/stores/huddle-stores";
 import { MEAL_SLOTS } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { BrowserMultiFormatReader } from "@zxing/browser";
@@ -125,6 +126,8 @@ export default function Nutrition() {
   const { user } = useAuth();
   const setGoals = useNutritionStore((s) => s.setGoals);
   const { familyGroup } = useFamilyStore();
+  const isSubscribed = usePriceStore((s) => s.isSubscribed);
+  const showInlineAds = import.meta.env.VITE_ADS_ENABLED !== "false" && !isSubscribed;
   const { addRecipe } = useRecipeStore();
   const { toast } = useToast();
   const aiMutation = useAiMutation();
@@ -152,6 +155,7 @@ export default function Nutrition() {
   const [weightKg, setWeightKg] = useState("");
   const [weightHistory, setWeightHistory] = useState<{ id: string; date: string; kg: number }[]>([]);
   const [estimatingError, setEstimatingError] = useState("");
+  const [logError, setLogError] = useState("");
   const [barcode, setBarcode] = useState("");
   const [barcodeLookupBusy, setBarcodeLookupBusy] = useState(false);
   const [barcodeError, setBarcodeError] = useState("");
@@ -177,6 +181,15 @@ export default function Nutrition() {
   const [photoFileName, setPhotoFileName] = useState("");
   const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isAiPromptModalOpen, setIsAiPromptModalOpen] = useState(false);
+  const [aiPromptText, setAiPromptText] = useState("");
+  const [aiPromptError, setAiPromptError] = useState("");
+  const [aiPromptMealNameDraft, setAiPromptMealNameDraft] = useState("");
+  const [aiPromptCaloriesDraft, setAiPromptCaloriesDraft] = useState("");
+  const [aiPromptProteinDraft, setAiPromptProteinDraft] = useState("");
+  const [aiPromptCarbsDraft, setAiPromptCarbsDraft] = useState("");
+  const [aiPromptFatDraft, setAiPromptFatDraft] = useState("");
   const PHOTO_ANALYSIS_REQUIRES_CREDITS = false;
   const autoSaveTimerRef = useRef<number | null>(null);
   const barcodeVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -378,13 +391,16 @@ export default function Nutrition() {
     setFat(String(totals.fat));
   }
 
-  async function estimateFromAiPrompt() {
-    if (!mealName.trim()) return;
-    setEstimatingError("");
+  async function analyzeFromAiPrompt() {
+    if (!aiPromptText.trim()) {
+      setAiPromptError("Enter food details first.");
+      return;
+    }
+    setAiPromptError("");
     try {
       const res = await aiMutation.mutateAsync({
-        prompt: `Estimate nutrition for this meal: "${mealName.trim()}". Return ONLY JSON with integers:
-{"calories":number,"protein":number,"carbs":number,"fat":number}`,
+        prompt: `Estimate nutrition for this meal from user details: "${aiPromptText.trim()}". Return ONLY JSON with integers:
+{"meal_name":string,"calories":number,"protein":number,"carbs":number,"fat":number}`,
         responseFormat: "json",
       });
       const parsed = (() => {
@@ -395,29 +411,48 @@ export default function Nutrition() {
         }
         return res.result as unknown as Record<string, unknown>;
       })();
-      setCal(String(Math.round(Number(parsed.calories ?? 0))));
-      setProt(String(Math.round(Number(parsed.protein ?? 0))));
-      setCarbs(String(Math.round(Number(parsed.carbs ?? 0))));
-      setFat(String(Math.round(Number(parsed.fat ?? 0))));
+      setAiPromptMealNameDraft(String(parsed.meal_name ?? "Meal"));
+      setAiPromptCaloriesDraft(String(Math.round(Number(parsed.calories ?? 0))));
+      setAiPromptProteinDraft(String(Math.round(Number(parsed.protein ?? 0))));
+      setAiPromptCarbsDraft(String(Math.round(Number(parsed.carbs ?? 0))));
+      setAiPromptFatDraft(String(Math.round(Number(parsed.fat ?? 0))));
     } catch {
-      setEstimatingError("AI estimate failed. Try again.");
+      setAiPromptError("AI analysis failed. Try again.");
     }
   }
 
-  async function handleAddLog(e: React.FormEvent) {
-    e.preventDefault();
-    if (!mealName || !user?.uid) return;
+  async function saveLogEntry(params: {
+    mealName: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    note?: string;
+    ingredients?: Array<{ name: string; amount?: string; unit?: string }>;
+    resetManualForm?: boolean;
+  }): Promise<boolean> {
+    if (!user?.uid) {
+      setLogError("You need to be signed in to save food logs.");
+      return false;
+    }
+    const nonEmptyIngredients = (params.ingredients ?? []).filter((i) => i.name.trim());
+    const fallbackMealName = nonEmptyIngredients.slice(0, 2).map((i) => i.name.trim()).join(", ");
+    const resolvedMealName = params.mealName.trim() || (fallbackMealName ? `${fallbackMealName} meal` : "");
+    if (!resolvedMealName) {
+      setLogError("Add a meal name or at least one ingredient before logging.");
+      return false;
+    }
+    setLogError("");
     const entry: NutritionLogEntry = {
       id: isEditingId ?? generateId(),
       source: "manual",
-      meal_name: mealName,
-      calories: Number(cal) || 0,
-      protein: Number(prot) || 0,
-      carbs: Number(carbs) || 0,
-      fat: Number(fat) || 0,
-      note: mealNote.trim() || undefined,
-      ingredients: manualIngredients
-        .filter((i) => i.name.trim())
+      meal_name: resolvedMealName,
+      calories: Math.round(Number(params.calories) || 0),
+      protein: Math.round(Number(params.protein) || 0),
+      carbs: Math.round(Number(params.carbs) || 0),
+      fat: Math.round(Number(params.fat) || 0),
+      note: params.note?.trim() || undefined,
+      ingredients: nonEmptyIngredients
         .map((i) => ({ name: i.name.trim(), amount: i.amount.trim(), unit: i.unit })),
       created_at: new Date().toISOString(),
     };
@@ -429,9 +464,28 @@ export default function Nutrition() {
     const refreshed = await loadDailyNutritionLog(user.uid, selectedDate);
     setTodayLog(refreshed);
     setWeekLogs((prev) => ({ ...prev, [selectedDate]: refreshed }));
-    setMealName(""); setCal(""); setProt(""); setCarbs(""); setFat(""); setMealNote("");
-    setIsEditingId(null);
-    setManualIngredients([{ id: crypto.randomUUID(), name: "", amount: "100", unit: "g" }]);
+    if (params.resetManualForm !== false) {
+      setMealName(""); setCal(""); setProt(""); setCarbs(""); setFat(""); setMealNote("");
+      setManualIngredients([{ id: crypto.randomUUID(), name: "", amount: "100", unit: "g" }]);
+      setIsEditingId(null);
+    }
+    setLogError("");
+    toast({ title: "Food logged", description: `Added to ${selectedDate}.` });
+    return true;
+  }
+
+  async function handleAddLog(e: React.FormEvent) {
+    e.preventDefault();
+    const ok = await saveLogEntry({
+      mealName,
+      calories: Number(cal) || 0,
+      protein: Number(prot) || 0,
+      carbs: Number(carbs) || 0,
+      fat: Number(fat) || 0,
+      note: mealNote,
+      ingredients: manualIngredients,
+    });
+    if (ok) setIsManualModalOpen(false);
   }
 
   async function handleLookupBarcode() {
@@ -673,23 +727,45 @@ export default function Nutrition() {
     await handleMealPhotoUpload(selectedPhotoFile);
   }
 
-  function addBarcodeToFoodLogForm() {
+  async function logBarcodeEntry() {
     if (!scannedProduct) return;
-    setMealName((barcodeMealName || scannedProduct.name).trim());
-    setCal(String(scannedProduct.calories ?? 0));
-    setProt(String(scannedProduct.protein ?? 0));
-    setCarbs(String(scannedProduct.carbs ?? 0));
-    setFat(String(scannedProduct.fat ?? 0));
-    setIsBarcodeModalOpen(false);
+    const ok = await saveLogEntry({
+      mealName: (barcodeMealName || scannedProduct.name).trim(),
+      calories: Number(scannedProduct.calories ?? 0),
+      protein: Number(scannedProduct.protein ?? 0),
+      carbs: Number(scannedProduct.carbs ?? 0),
+      fat: Number(scannedProduct.fat ?? 0),
+      note: "Logged from barcode scan",
+      resetManualForm: false,
+    });
+    if (ok) setIsBarcodeModalOpen(false);
   }
 
-  function addPhotoAnalysisToFoodLogForm() {
-    setMealName(photoMealNameDraft.trim() || photoResult?.meal_name || "Meal");
-    setCal(photoCaloriesDraft);
-    setProt(photoProteinDraft);
-    setCarbs(photoCarbsDraft);
-    setFat(photoFatDraft);
-    setIsPhotoModalOpen(false);
+  async function logPhotoEntry() {
+    if (!photoResult) return;
+    const ok = await saveLogEntry({
+      mealName: photoMealNameDraft.trim() || photoResult.meal_name || "Meal",
+      calories: Number(photoCaloriesDraft || 0),
+      protein: Number(photoProteinDraft || 0),
+      carbs: Number(photoCarbsDraft || 0),
+      fat: Number(photoFatDraft || 0),
+      note: photoHint ? `AI photo analysis. Hint: ${photoHint}` : "AI photo analysis",
+      resetManualForm: false,
+    });
+    if (ok) setIsPhotoModalOpen(false);
+  }
+
+  async function logAiPromptEntry() {
+    const ok = await saveLogEntry({
+      mealName: aiPromptMealNameDraft.trim(),
+      calories: Number(aiPromptCaloriesDraft || 0),
+      protein: Number(aiPromptProteinDraft || 0),
+      carbs: Number(aiPromptCarbsDraft || 0),
+      fat: Number(aiPromptFatDraft || 0),
+      note: aiPromptText.trim() ? `AI details: ${aiPromptText.trim()}` : "AI details analysis",
+      resetManualForm: false,
+    });
+    if (ok) setIsAiPromptModalOpen(false);
   }
 
   async function handleDeleteLog(entryId: string) {
@@ -720,6 +796,7 @@ export default function Nutrition() {
         : [{ id: crypto.randomUUID(), name: "", amount: "100", unit: "g" }],
     );
     setTab("log");
+    setIsManualModalOpen(true);
   }
 
   async function handleAddWeight(e: React.FormEvent) {
@@ -1083,149 +1160,23 @@ export default function Nutrition() {
                 onChange={(e) => setSelectedDate(e.target.value || todayStr)}
               />
             </Card>
-            <form
-              onSubmit={handleAddLog}
-              className="bg-white p-4 rounded-2xl border border-border space-y-3 min-w-0 max-w-full overflow-x-hidden"
-            >
-              <div className="flex flex-col gap-2">
-                <Button type="button" variant="outline" className="w-full" onClick={() => setIsBarcodeModalOpen(true)}>
-                  Scan Barcode
-                </Button>
-                <Button type="button" variant="outline" className="w-full" onClick={() => setIsPhotoModalOpen(true)}>
-                  Upload Meal Photo
-                </Button>
-              </div>
-
-              <input
-                className="w-full border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary"
-                placeholder="What did you eat?"
-                value={mealName}
-                onChange={e => setMealName(e.target.value)}
-              />
-              <textarea
-                className="w-full border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary resize-none"
-                rows={2}
-                placeholder="Optional details or AI prompt context"
-                value={mealNote}
-                onChange={e => setMealNote(e.target.value)}
-              />
-              <div className="bg-secondary/30 border border-border rounded-xl p-3 space-y-2 overflow-x-hidden">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Ingredient estimator</p>
-                {manualIngredients.map((row) => (
-                  <div key={row.id} className="grid grid-cols-[minmax(0,1fr)_56px_62px_24px] gap-1.5 items-center">
-                    <input
-                      className="min-w-0 border border-border rounded-lg px-2.5 py-2 text-sm bg-white"
-                      placeholder="Ingredient"
-                      value={row.name}
-                      onChange={(e) => setManualIngredients((prev) => prev.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))}
-                    />
-                    <input
-                      type="number"
-                      className="w-full border border-border rounded-lg px-1.5 py-2 text-sm bg-white"
-                      value={row.amount}
-                      onChange={(e) => setManualIngredients((prev) => prev.map((r) => r.id === row.id ? { ...r, amount: e.target.value } : r))}
-                    />
-                    <select
-                      className="w-full border border-border rounded-lg px-1 py-2 text-[11px] bg-white"
-                      value={row.unit}
-                      onChange={(e) => setManualIngredients((prev) => prev.map((r) => r.id === row.id ? { ...r, unit: e.target.value as ManualUnit } : r))}
-                    >
-                      <option value="g">g</option><option value="kg">kg</option><option value="oz">oz</option><option value="lb">lb</option>
-                      <option value="cup">cup</option><option value="tbsp">tbsp</option><option value="tsp">tsp</option><option value="piece">piece</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="w-6 h-6 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-destructive"
-                      onClick={() => setManualIngredients((prev) => prev.length > 1 ? prev.filter((r) => r.id !== row.id) : prev)}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Button type="button" variant="outline" className="w-full text-xs sm:text-sm" onClick={estimateFromIngredients}>
-                    Estimate from ingredients
-                  </Button>
-                  <Button type="button" variant="outline" className="w-full text-xs sm:text-sm" onClick={() => {
-                    void estimateFromAiPrompt();
-                  }} disabled={!mealName.trim() || aiMutation.isPending}>
-                    {aiMutation.isPending ? <Loader2 size={14} className="animate-spin mr-1" /> : <Sparkles size={14} className="mr-1" />}
-                    Use AI prompt
-                  </Button>
-                </div>
-                <button
-                  type="button"
-                  className="text-xs text-primary font-semibold hover:underline"
-                  onClick={() => setManualIngredients((prev) => [...prev, { id: crypto.randomUUID(), name: "", amount: "100", unit: "g" }])}
-                >
-                  + Add ingredient
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-3 min-w-0">
-                <label className="space-y-1">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Calories (kcal)</span>
-                  <input
-                    type="number"
-                    className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
-                    placeholder="Calories"
-                    value={cal}
-                    onChange={e => setCal(e.target.value)}
-                    inputMode="decimal"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Protein (g)</span>
-                  <input
-                    type="number"
-                    className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
-                    placeholder="Protein"
-                    value={prot}
-                    onChange={e => setProt(e.target.value)}
-                    inputMode="decimal"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Carbs (g)</span>
-                  <input
-                    type="number"
-                    className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
-                    placeholder="Carbs"
-                    value={carbs}
-                    onChange={e => setCarbs(e.target.value)}
-                    inputMode="decimal"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Fat (g)</span>
-                  <input
-                    type="number"
-                    className="min-w-0 w-full border border-border rounded-xl px-3 py-3 text-sm outline-none focus:border-primary"
-                    placeholder="Fat"
-                    value={fat}
-                    onChange={e => setFat(e.target.value)}
-                    inputMode="decimal"
-                  />
-                </label>
-              </div>
-              {estimatingError && <p className="text-xs text-destructive">{estimatingError}</p>}
-              <div className="flex gap-2">
-                <Button type="submit" className="flex-1">
-                  {isEditingId ? <><Save size={14} className="mr-1" /> Save Update</> : "Log Food"}
-                </Button>
-                {isEditingId && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setIsEditingId(null);
-                      setMealName(""); setCal(""); setProt(""); setCarbs(""); setFat(""); setMealNote("");
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                )}
-              </div>
-            </form>
+            <Card className="space-y-3">
+              <h3 className="font-semibold text-sm">Add food entry</h3>
+              <Button type="button" variant="outline" className="w-full" onClick={() => setIsBarcodeModalOpen(true)}>
+                Scan Barcode
+              </Button>
+              <Button type="button" variant="outline" className="w-full" onClick={() => setIsPhotoModalOpen(true)}>
+                Upload Meal Photo
+              </Button>
+              <Button type="button" variant="outline" className="w-full" onClick={() => setIsAiPromptModalOpen(true)}>
+                Describe Meal with AI
+              </Button>
+              <Button type="button" className="w-full" onClick={() => setIsManualModalOpen(true)}>
+                Manually Enter Meal
+              </Button>
+              {logError && <p className="text-xs text-destructive">{logError}</p>}
+            </Card>
+            {showInlineAds && <AdSlot placement="inline" />}
 
             <Dialog open={isPhotoModalOpen} onOpenChange={setIsPhotoModalOpen}>
               <DialogContent className="sm:max-w-lg">
@@ -1278,7 +1229,65 @@ export default function Nutrition() {
                 </div>
                 <DialogFooter className="gap-2 sm:justify-center">
                   <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsPhotoModalOpen(false)}>Cancel</Button>
-                  <Button type="button" className="w-full sm:w-auto" onClick={addPhotoAnalysisToFoodLogForm} disabled={!photoResult}>Add to food log</Button>
+                  <Button type="button" className="w-full sm:w-auto" onClick={() => { void logPhotoEntry(); }} disabled={!photoResult}>Log meal</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isAiPromptModalOpen} onOpenChange={setIsAiPromptModalOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Describe Meal with AI</DialogTitle>
+                  <DialogDescription>
+                    AI estimate may consume credits and can be inaccurate. Review values before logging.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <textarea
+                    className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white resize-none"
+                    rows={4}
+                    placeholder="Example: Large chicken burrito bowl with rice, black beans, guacamole and cheese"
+                    value={aiPromptText}
+                    onChange={(e) => setAiPromptText(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => { void analyzeFromAiPrompt(); }}
+                    disabled={!aiPromptText.trim() || aiMutation.isPending}
+                  >
+                    {aiMutation.isPending ? <Loader2 size={14} className="animate-spin mr-1" /> : <Sparkles size={14} className="mr-1" />}
+                    Analyze with AI
+                  </Button>
+                  {aiPromptError && <p className="text-xs text-destructive">{aiPromptError}</p>}
+                  {(aiPromptMealNameDraft || aiPromptCaloriesDraft || aiPromptProteinDraft || aiPromptCarbsDraft || aiPromptFatDraft) && (
+                    <div className="space-y-3 border border-border rounded-xl p-3 bg-secondary/20">
+                      <input
+                        className="w-full border rounded-xl px-3 py-2 text-sm bg-white"
+                        placeholder="Meal title"
+                        value={aiPromptMealNameDraft}
+                        onChange={(e) => setAiPromptMealNameDraft(e.target.value)}
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Calories" value={aiPromptCaloriesDraft} onChange={(e) => setAiPromptCaloriesDraft(e.target.value)} />
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Protein" value={aiPromptProteinDraft} onChange={(e) => setAiPromptProteinDraft(e.target.value)} />
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Carbs" value={aiPromptCarbsDraft} onChange={(e) => setAiPromptCarbsDraft(e.target.value)} />
+                        <input type="number" className="w-full border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Fat" value={aiPromptFatDraft} onChange={(e) => setAiPromptFatDraft(e.target.value)} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="gap-2 sm:justify-center">
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsAiPromptModalOpen(false)}>Cancel</Button>
+                  <Button
+                    type="button"
+                    className="w-full sm:w-auto"
+                    onClick={() => { void logAiPromptEntry(); }}
+                    disabled={!aiPromptMealNameDraft.trim()}
+                  >
+                    Log meal
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -1346,8 +1355,72 @@ export default function Nutrition() {
                 </div>
                 <DialogFooter className="gap-2 sm:justify-center">
                   <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsBarcodeModalOpen(false)}>Cancel</Button>
-                  <Button type="button" className="w-full sm:w-auto" onClick={addBarcodeToFoodLogForm} disabled={!scannedProduct}>Add to food log</Button>
+                  <Button type="button" className="w-full sm:w-auto" onClick={() => { void logBarcodeEntry(); }} disabled={!scannedProduct}>Log meal</Button>
                 </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isManualModalOpen} onOpenChange={setIsManualModalOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>{isEditingId ? "Edit Meal Entry" : "Manually Enter Meal"}</DialogTitle>
+                  <DialogDescription>
+                    Enter meal details, estimate from ingredients, then log to this day.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddLog} className="space-y-3">
+                  <input
+                    className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white"
+                    placeholder="Meal title"
+                    value={mealName}
+                    onChange={e => { setMealName(e.target.value); if (logError) setLogError(""); }}
+                  />
+                  <textarea
+                    className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white resize-none"
+                    rows={2}
+                    placeholder="Optional notes"
+                    value={mealNote}
+                    onChange={e => setMealNote(e.target.value)}
+                  />
+                  <div className="bg-secondary/30 border border-border rounded-xl p-3 space-y-2">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Ingredient estimator</p>
+                    {manualIngredients.map((row) => (
+                      <div key={row.id} className="grid grid-cols-[minmax(0,1fr)_56px_62px_24px] gap-1.5 items-center">
+                        <input className="min-w-0 border border-border rounded-lg px-2.5 py-2 text-sm bg-white" placeholder="Ingredient" value={row.name} onChange={(e) => setManualIngredients((prev) => prev.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))} />
+                        <input type="number" className="w-full border border-border rounded-lg px-1.5 py-2 text-sm bg-white" value={row.amount} onChange={(e) => setManualIngredients((prev) => prev.map((r) => r.id === row.id ? { ...r, amount: e.target.value } : r))} />
+                        <select className="w-full border border-border rounded-lg px-1 py-2 text-[11px] bg-white" value={row.unit} onChange={(e) => setManualIngredients((prev) => prev.map((r) => r.id === row.id ? { ...r, unit: e.target.value as ManualUnit } : r))}>
+                          <option value="g">g</option><option value="kg">kg</option><option value="oz">oz</option><option value="lb">lb</option>
+                          <option value="cup">cup</option><option value="tbsp">tbsp</option><option value="tsp">tsp</option><option value="piece">piece</option>
+                        </select>
+                        <button type="button" className="w-6 h-6 inline-flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-destructive" onClick={() => setManualIngredients((prev) => prev.length > 1 ? prev.filter((r) => r.id !== row.id) : prev)}>
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Button type="button" variant="outline" className="w-full text-xs sm:text-sm" onClick={estimateFromIngredients}>
+                        Estimate from ingredients
+                      </Button>
+                      <Button type="button" variant="outline" className="w-full text-xs sm:text-sm" onClick={() => setManualIngredients((prev) => [...prev, { id: crypto.randomUUID(), name: "", amount: "100", unit: "g" }])}>
+                        + Add ingredient
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="number" className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Calories" value={cal} onChange={e => setCal(e.target.value)} />
+                    <input type="number" className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Protein (g)" value={prot} onChange={e => setProt(e.target.value)} />
+                    <input type="number" className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Carbs (g)" value={carbs} onChange={e => setCarbs(e.target.value)} />
+                    <input type="number" className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white" placeholder="Fat (g)" value={fat} onChange={e => setFat(e.target.value)} />
+                  </div>
+                  {estimatingError && <p className="text-xs text-destructive">{estimatingError}</p>}
+                  {logError && <p className="text-xs text-destructive">{logError}</p>}
+                  <DialogFooter className="gap-2 sm:justify-center">
+                    <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsManualModalOpen(false)}>Cancel</Button>
+                    <Button type="submit" className="w-full sm:w-auto">
+                      {isEditingId ? "Save Update" : "Log meal"}
+                    </Button>
+                  </DialogFooter>
+                </form>
               </DialogContent>
             </Dialog>
 

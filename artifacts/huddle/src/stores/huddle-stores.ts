@@ -259,6 +259,8 @@ interface ShoppingState {
   items: ShoppingItem[];
   /** The week that the shopping list was last synced from — may differ from "this week" */
   selectedWeekStart: string | null;
+  /** Internal — called by shopping sync to apply remote Firestore data */
+  _setItemsFromRemote: (items: ShoppingItem[]) => void;
   addItem: (item: Omit<ShoppingItem, "id" | "created_at" | "checked">) => void;
   toggleItem: (id: string) => void;
   deleteItem: (id: string) => void;
@@ -274,6 +276,7 @@ export const useShoppingStore = create<ShoppingState>()(
     (set, get) => ({
       items: [],
       selectedWeekStart: null,
+      _setItemsFromRemote: (items) => set({ items }),
       setSelectedWeek: (weekStart) => set({ selectedWeekStart: weekStart }),
       addItem: (data) => set({ items: [...get().items, { ...data, id: generateId(), checked: false, created_at: new Date().toISOString() }] }),
       toggleItem: (id) => set({ items: get().items.map((i) => i.id === id ? { ...i, checked: !i.checked } : i) }),

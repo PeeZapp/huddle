@@ -4,7 +4,8 @@ import { Plus, Sparkles, ChevronLeft, ChevronRight, Pencil, ShoppingCart, X, Che
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays } from "date-fns";
 import { Card } from "@/components/ui";
-import { useFamilyStore, useMealPlanStore, useRecipeStore, useShoppingStore } from "@/stores/huddle-stores";
+import AdSlot from "@/components/ads/AdSlot";
+import { useFamilyStore, useMealPlanStore, usePriceStore, useRecipeStore, useShoppingStore } from "@/stores/huddle-stores";
 import { generateId, getWeekStart } from "@/lib/utils";
 import { DAYS, DAY_LABELS, MEAL_SLOTS, Day, MealSlotKey, MealSlotData } from "@/lib/types";
 import { recipesForSlot } from "@/lib/generate-plan";
@@ -22,6 +23,10 @@ function findSwap(
   currentData: MealSlotData | null,
   slot: MealSlotKey,
   recipes: ReturnType<typeof recipesForSlot>,
+  options?: {
+    recentRecipeIds?: string[];
+    avoidRecipeIds?: Set<string>;
+  },
 ): MealSlotData | null {
   const pool = recipes.filter(r => r.id !== currentData?.recipe_id);
   if (pool.length === 0) return null;
@@ -29,16 +34,41 @@ function findSwap(
   const targetCal  = currentData?.calories  ?? 600;
   const targetProt = currentData?.protein   ?? 30;
 
-  const scored = pool.map(r => ({
-    recipe: r,
-    score:  Math.abs((r.calories ?? targetCal)  - targetCal)
-          + Math.abs((r.protein  ?? targetProt) - targetProt) * 4,
-  }));
+  const recentIds = options?.recentRecipeIds ?? [];
+  const recentPenaltyById = new Map<string, number>();
+  recentIds.forEach((id, idx) => {
+    // Strongly de-prioritize very recent swaps for this slot/day.
+    recentPenaltyById.set(id, Math.max(0, (recentIds.length - idx) * 200));
+  });
+  const avoid = options?.avoidRecipeIds ?? new Set<string>();
+
+  const scored = pool.map(r => {
+    const nutritionScore =
+      Math.abs((r.calories ?? targetCal) - targetCal) +
+      Math.abs((r.protein ?? targetProt) - targetProt) * 4;
+    const recentPenalty = recentPenaltyById.get(r.id) ?? 0;
+    // Lightly discourage recipes already used elsewhere this week.
+    const duplicateWeekPenalty = avoid.has(r.id) ? 45 : 0;
+    return {
+      recipe: r,
+      score: nutritionScore + recentPenalty + duplicateWeekPenalty,
+    };
+  });
   scored.sort((a, b) => a.score - b.score);
 
-  // Pick randomly from top-5 so Redo feels different
-  const topN   = Math.min(5, scored.length);
-  const picked = scored[Math.floor(Math.random() * topN)].recipe;
+  // Widen candidate band and bias toward better matches.
+  const topN = Math.min(12, scored.length);
+  const candidates = scored.slice(0, topN);
+  const totalWeight = candidates.reduce((sum, _, i) => sum + (topN - i), 0);
+  let roll = Math.random() * totalWeight;
+  let picked = candidates[0].recipe;
+  for (let i = 0; i < candidates.length; i++) {
+    roll -= topN - i;
+    if (roll <= 0) {
+      picked = candidates[i].recipe;
+      break;
+    }
+  }
 
   return {
     recipe_id:   picked.id,
@@ -61,6 +91,8 @@ export default function Plan() {
   const { recipes }            = useRecipeStore();
   const { setSelectedWeek } = useShoppingStore();
   const { user } = useAuth();
+  const isSubscribed = usePriceStore((s) => s.isSubscribed);
+  const showInlineAds = import.meta.env.VITE_ADS_ENABLED !== "false" && !isSubscribed;
   const [servingFactor, setServingFactor] = useState(1);
 
   const [currentDate, setCurrentDate] = useState(() => _planCurrentDate ?? new Date());
@@ -76,6 +108,7 @@ export default function Plan() {
   const [sheetOpen, setSheetOpen]   = useState(false);
   const [sheetDay,  setSheetDay]    = useState<Day>("monday");
   const [sheetSlot, setSheetSlot]   = useState<MealSlotKey>("dinner");
+  const swapHistoryRef = useRef<Record<string, string[]>>({});
 
   useEffect(() => {
     if (!profile?.family_code) {
@@ -157,8 +190,21 @@ export default function Plan() {
   function handleSwap(day: Day, slot: MealSlotKey) {
     const currentData = plan.slots[`${day}_${slot}`] ?? null;
     const pool        = recipesForSlot(recipes, slot);
-    const swapped     = findSwap(currentData, slot, pool);
-    if (swapped) setSlot(weekStart, familyGroup!.code, day, slot, swapped);
+    const swapKey = `${weekStart}:${day}:${slot}`;
+    const recent = swapHistoryRef.current[swapKey] ?? [];
+    const usedThisWeek = new Set(
+      Object.values(plan.slots)
+        .map((s) => s?.recipe_id)
+        .filter((id): id is string => Boolean(id)),
+    );
+    if (currentData?.recipe_id) usedThisWeek.delete(currentData.recipe_id);
+    const swapped = findSwap(currentData, slot, pool, {
+      recentRecipeIds: recent,
+      avoidRecipeIds: usedThisWeek,
+    });
+    if (!swapped) return;
+    setSlot(weekStart, familyGroup!.code, day, slot, swapped);
+    swapHistoryRef.current[swapKey] = [swapped.recipe_id, ...recent.filter((id) => id !== swapped.recipe_id)].slice(0, 8);
   }
 
   function memberFactorFromType(type: string) {
@@ -293,8 +339,8 @@ export default function Plan() {
           const filledCount = dayVisibleSlots.filter((s) => plan.slots[`${day}_${s}`]).length;
 
           return (
+            <div key={day} className="space-y-4">
             <Card
-              key={day}
               className={`p-0 overflow-hidden ${isExpanded ? "border-primary/30 shadow-md ring-1 ring-primary/10" : ""}`}
             >
               {/* Day header */}
@@ -494,6 +540,10 @@ export default function Plan() {
                 )}
               </AnimatePresence>
             </Card>
+            {showInlineAds && idx % 2 === 1 && (
+              <AdSlot placement="inline" />
+            )}
+            </div>
           );
         })}
       </div>

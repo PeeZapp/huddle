@@ -29,6 +29,7 @@ import {
 import { db } from "./firebase";
 import {
   MealPlan,
+  ShoppingItem,
   UserProfile,
   FamilyGroup,
   Recipe,
@@ -99,9 +100,14 @@ export async function saveUserProfile(uid: string, data: UserProfileDoc): Promis
 }
 
 const COLLECTION = "family-meal-plans";
+const SHOPPING_COLLECTION = "family-shopping";
 
 function planDocRef(familyCode: string) {
   return doc(db, COLLECTION, familyCode);
+}
+
+function shoppingDocRef(familyCode: string) {
+  return doc(db, SHOPPING_COLLECTION, familyCode);
 }
 
 // ── Save ──────────────────────────────────────────────────────────────────────
@@ -157,6 +163,56 @@ export function subscribeMealPlans(
     },
     (err) => {
       console.warn("[firestore-sync] subscribeMealPlans error:", err);
+    },
+  );
+}
+
+// ── Shopping list sync ────────────────────────────────────────────────────────
+
+export async function saveShoppingItems(
+  familyCode: string,
+  items: ShoppingItem[],
+): Promise<void> {
+  if (!familyCode) return;
+  try {
+    await setDoc(shoppingDocRef(familyCode), {
+      items,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn("[firestore-sync] saveShoppingItems failed:", err);
+  }
+}
+
+export async function loadShoppingItems(
+  familyCode: string,
+): Promise<ShoppingItem[] | null> {
+  if (!familyCode) return null;
+  try {
+    const snap = await getDoc(shoppingDocRef(familyCode));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return Array.isArray(data?.items) ? (data.items as ShoppingItem[]) : null;
+  } catch (err) {
+    console.warn("[firestore-sync] loadShoppingItems failed:", err);
+    return null;
+  }
+}
+
+export function subscribeShoppingItems(
+  familyCode: string,
+  onData: (items: ShoppingItem[]) => void,
+): Unsubscribe {
+  if (!familyCode) return () => {};
+  return onSnapshot(
+    shoppingDocRef(familyCode),
+    (snap) => {
+      if (!snap.exists()) return;
+      const items = snap.data()?.items;
+      if (Array.isArray(items)) onData(items as ShoppingItem[]);
+    },
+    (err) => {
+      console.warn("[firestore-sync] subscribeShoppingItems error:", err);
     },
   );
 }

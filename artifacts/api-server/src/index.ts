@@ -1,5 +1,10 @@
-import "dotenv/config";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { config as loadEnv } from "dotenv";
 import app from "./app";
+
+const thisDir = path.dirname(fileURLToPath(import.meta.url));
+loadEnv({ path: path.resolve(thisDir, "..", ".env") });
 
 const rawPort = process.env["PORT"] ?? "8080";
 
