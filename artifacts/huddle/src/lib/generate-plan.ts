@@ -60,7 +60,7 @@ export function recipesForSlot(recipes: Recipe[], slot: MealSlotKey): Recipe[] {
 //   - Unselected optional slots (snacks, dessert) are NOT assumed — the user just
 //     isn't having them, so no calories are subtracted from the budget for them
 //   - The remaining budget is distributed across all selected slots proportionally
-function slotTarget(
+export function slotTarget(
   slot: MealSlotKey,
   selectedSlots: MealSlotKey[],
   goals: NutritionGoals,
@@ -85,6 +85,16 @@ function slotTarget(
     calories: Math.round(budgetCal  * shareCal),
     protein:  Math.round(budgetProt * shareProt),
   };
+}
+
+/** Lower is better — matches auto-fill scoring (cal diff + 4× protein diff). */
+export function nutritionFitScore(
+  recipe: Recipe,
+  target: { calories: number; protein: number },
+): number {
+  const calDiff  = Math.abs((recipe.calories ?? target.calories) - target.calories);
+  const protDiff = Math.abs((recipe.protein  ?? target.protein)  - target.protein);
+  return calDiff + protDiff * 4;
 }
 
 export interface GeneratedSlot {
@@ -173,9 +183,7 @@ export function generateMealPlan(
       const scoringPool = eligibleByHardCaps.length > 0 ? eligibleByHardCaps : candidates;
 
       const scored = scoringPool.map(r => {
-        const calDiff  = Math.abs((r.calories ?? target.calories) - target.calories);
-        const protDiff = Math.abs((r.protein  ?? target.protein)  - target.protein);
-        const nutritionScore = calDiff + protDiff * 4;
+        const nutritionScore = nutritionFitScore(r, target);
 
         // Encourage some overlap to reduce waste and simplify shopping.
         const ingSet = recipeIngredientSet(r);
